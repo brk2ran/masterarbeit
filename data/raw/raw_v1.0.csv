@@ -1,0 +1,101 @@
+﻿Public ID,Organization,Availability,System Name (Click + for details),Board Name,Host Processor Frequency,Software,Processor,Accelerator,Benchmark,Model MLC,Units,Avg. Result
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,DSCNN,latency (ms),0.475
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,DSCNN,Energy in uJ,26.659
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,FC AutoEncoder,latency (ms),0.176
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,FC AutoEncoder,Energy in uJ,7.294
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,MobileNetV1 (0.25x),latency (ms),1.125
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,MobileNetV1 (0.25x),Energy in uJ,58.356
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,ResNet-V1,latency (ms),0.616
+1.0-9001,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,ResNet-V1,Energy in uJ,40.356
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,DSCNN,latency (ms),0.732
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,DSCNN,Energy in uJ,18.561
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,FC AutoEncoder,latency (ms),0.271
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,FC AutoEncoder,Energy in uJ,5.252
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,MobileNetV1 (0.25x),latency (ms),1.733
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,MobileNetV1 (0.25x),Energy in uJ,40.801
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,ResNet-V1,latency (ms),0.949
+1.0-9002,Greenwaves Technologies,Available Cloud,GAP9,GAP9 EVK,,GreenWaves GAPFlow,RISC-V Core (1+9),NE16 (1),Tiny,ResNet-V1,Energy in uJ,27.711
+1.0-9003,OctoML,Available Cloud,nRF5340,NRF5340DK,,microTVM using CMSIS-NN backend,Arm Cortex-M33,,Tiny,DSCNN,latency (ms),76.1
+1.0-9003,OctoML,Available Cloud,nRF5340,NRF5340DK,,microTVM using CMSIS-NN backend,Arm Cortex-M33,,Tiny,FC AutoEncoder,latency (ms),6.27
+1.0-9003,OctoML,Available Cloud,nRF5340,NRF5340DK,,microTVM using CMSIS-NN backend,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),latency (ms),232
+1.0-9003,OctoML,Available Cloud,nRF5340,NRF5340DK,,microTVM using CMSIS-NN backend,Arm Cortex-M33,,Tiny,ResNet-V1,latency (ms),316.1
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),99.8
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,DSCNN,Energy in uJ,5230.27
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),8.6
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,FC AutoEncoder,Energy in uJ,443.184
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),301.2
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),Energy in uJ,15531.4
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),389.5
+1.0-9004,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using CMSIS-NN backend,Arm Cortex-M4,,Tiny,ResNet-V1,Energy in uJ,20236.3
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),144
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,DSCNN,Energy in uJ,7950.51
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),11.7
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,FC AutoEncoder,Energy in uJ,633.734
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),336.5
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),Energy in uJ,17131.6
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),389.2
+1.0-9005,OctoML,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,microTVM using native codegen,Arm Cortex-M4,,Tiny,ResNet-V1,Energy in uJ,21342.3
+1.0-9006,Plumerai,Available Cloud,STM32U585,B_U585I_IOT02A,,Plumerai Inference Engine 2022.09,Arm Cortex-M33,,Tiny,DSCNN,latency (ms),35.4
+1.0-9006,Plumerai,Available Cloud,STM32U585,B_U585I_IOT02A,,Plumerai Inference Engine 2022.09,Arm Cortex-M33,,Tiny,FC AutoEncoder,latency (ms),4.9
+1.0-9006,Plumerai,Available Cloud,STM32U585,B_U585I_IOT02A,,Plumerai Inference Engine 2022.09,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),latency (ms),107
+1.0-9006,Plumerai,Available Cloud,STM32U585,B_U585I_IOT02A,,Plumerai Inference Engine 2022.09,Arm Cortex-M33,,Tiny,ResNet-V1,latency (ms),107.1
+1.0-9007,Plumerai,Available Cloud,PSoC 62 MCU,CY8CPROTO-062-4343w,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),61.4
+1.0-9007,Plumerai,Available Cloud,PSoC 62 MCU,CY8CPROTO-062-4343w,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),6.7
+1.0-9007,Plumerai,Available Cloud,PSoC 62 MCU,CY8CPROTO-062-4343w,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),192.5
+1.0-9007,Plumerai,Available Cloud,PSoC 62 MCU,CY8CPROTO-062-4343w,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),193.1
+1.0-9008,Plumerai,Available Cloud,STM32F746,DISCO-F746NG,,Plumerai Inference Engine 2022.09,Arm Cortex-M7,,Tiny,DSCNN,latency (ms),19.1
+1.0-9008,Plumerai,Available Cloud,STM32F746,DISCO-F746NG,,Plumerai Inference Engine 2022.09,Arm Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),2.3
+1.0-9008,Plumerai,Available Cloud,STM32F746,DISCO-F746NG,,Plumerai Inference Engine 2022.09,Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),57
+1.0-9008,Plumerai,Available Cloud,STM32F746,DISCO-F746NG,,Plumerai Inference Engine 2022.09,Arm Cortex-M7,,Tiny,ResNet-V1,latency (ms),64.8
+1.0-9009,Plumerai,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),71.7
+1.0-9009,Plumerai,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),5.6
+1.0-9009,Plumerai,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),208.6
+1.0-9009,Plumerai,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,Plumerai Inference Engine 2022.09,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),173.2
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,DSCNN,latency (ms),36.28
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,DSCNN,Energy in uJ,401.861
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,FC AutoEncoder,latency (ms),5.43
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,FC AutoEncoder,Energy in uJ,47.299
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,MobileNetV1 (0.25x),latency (ms),111.61
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,MobileNetV1 (0.25x),Energy in uJ,1139.22
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,ResNet-V1,latency (ms),120.93
+1.0-9010,Silicon Labs,Available Cloud,EFR32MG24,xG24-DK2601B,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Arm Cortex-M33,Silicon Labs MVP(1) (78 MHz; 1.8V),Tiny,ResNet-V1,Energy in uJ,1234.65
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,DSCNN,latency (ms),16.76
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,DSCNN,Energy in uJ,2721.78
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),1.82
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,FC AutoEncoder,Energy in uJ,266.486
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),50.7
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),Energy in uJ,7978.47
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,ResNet-V1,latency (ms),54.34
+1.0-9011,STMicroelectronics,Available Cloud,STM32H7A3ZIT6Q,NUCLEO-H7A3ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M7,,Tiny,ResNet-V1,Energy in uJ,8707.28
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),75.05
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,DSCNN,Energy in uJ,3371.74
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),7.57
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,FC AutoEncoder,Energy in uJ,322.977
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),230.48
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),Energy in uJ,10066.6
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),226.9
+1.0-9012,STMicroelectronics,Available Cloud,STM32L4R5ZIT6U,NUCLEO-L4R5ZI,,X-CUBE-AI v7.3.0,Arm Cortex-M4,,Tiny,ResNet-V1,Energy in uJ,10681.6
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,DSCNN,latency (ms),44.23
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,DSCNN,Energy in uJ,1138.53
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,FC AutoEncoder,latency (ms),4.84
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,FC AutoEncoder,Energy in uJ,119.113
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),latency (ms),133.41
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),Energy in uJ,3364.46
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,ResNet-V1,latency (ms),139.7
+1.0-9013,STMicroelectronics,Available Cloud,STM32U575ZIT6Q,NUCLEO-U575ZI-Q,,X-CUBE-AI v7.3.0,Arm Cortex-M33,,Tiny,ResNet-V1,Energy in uJ,3642
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,DSCNN,latency (ms),1.48
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,DSCNN,Energy in uJ,43.8
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,MobileNetV1 (0.25x),latency (ms),4.1
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,MobileNetV1 (0.25x),Energy in uJ,97.16
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,ResNet-V1,latency (ms),5.12
+1.0-9014,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (98MHz; 1.1V),Tiny,ResNet-V1,Energy in uJ,139.37
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,DSCNN,latency (ms),4.37
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,DSCNN,Energy in uJ,31.54
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,MobileNetV1 (0.25x),latency (ms),12.7
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,MobileNetV1 (0.25x),Energy in uJ,71.71
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,ResNet-V1,latency (ms),15.97
+1.0-9015,Syntiant,Available Cloud,NDP120,NDP9120-EVL,,Syntiant TDK,M0 + HiFi,Syntiant Core 2 (30MHz; 0.9V),Tiny,ResNet-V1,Energy in uJ,101.83
+1.0-9016,Qualcomm Innovation Center,Preview,Next Generation Snapdragon Mobile Platform,Next Generation Snapdragon Mobile Platform HDK,,Qualcomm AI Stack,Qualcomm Kryo CPU(1),Qualcomm Sensing Hub(1),Tiny,FC AutoEncoder,latency (ms),0.098
+1.0-9017,hls4ml,Available Cloud,Zynq-7020,Pynq-Z2,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,latency (ms),7.64
+1.0-9017,hls4ml,Available Cloud,Zynq-7020,Pynq-Z2,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Energy in uJ,12266
+1.0-9017,hls4ml,Available Cloud,Zynq-7020,Pynq-Z2,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Accuracy,0.835

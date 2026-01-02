@@ -1,0 +1,94 @@
+﻿Public ID,Organization,Availability,System Name (Click + for details),Board Name,Host Processor Frequency,Software,Processor,Accelerator,Benchmark,Model MLC,Units,Avg. Result
+0.7-2001,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D25F; 5-stage; single-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,DSCNN,latency (ms),79.85
+0.7-2001,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D25F; 5-stage; single-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,FC AutoEncoder,latency (ms),16.8
+0.7-2001,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D25F; 5-stage; single-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,MobileNetV1 (0.25x),latency (ms),296.38
+0.7-2001,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D25F; 5-stage; single-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,ResNet-V1,latency (ms),304.69
+0.7-2002,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D45; 8-stage; dual-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,DSCNN,latency (ms),68.31
+0.7-2002,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D45; 8-stage; dual-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,FC AutoEncoder,latency (ms),12.13
+0.7-2002,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D45; 8-stage; dual-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,MobileNetV1 (0.25x),latency (ms),225.58
+0.7-2002,Andes,Available Cloud,ADP-XC7K160/410 FPGA,,,TensorFlowLite for Microcontrollers; Andes NN Library,AndesCore D45; 8-stage; dual-issue; RV32 IMACP (1),RISC-V P Extension,Tiny,ResNet-V1,latency (ms),227.69
+0.7-2003,Andes,Available Cloud,Xilinx VCU118 FPGA,,,TensorFlowLite for Microcontrollers;  Andes NN Library,AndesCore NX27V; 5-stage; single-issue; RV64 IMACV; RVV(VLEN; SIMD; BIU)=(128; 128; 128) (1),RISC-V V Extension,Tiny,FC AutoEncoder,latency (ms),4.09
+0.7-2004,Plumerai,Available Cloud,NUCLEO-L4R5ZI,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),73.5
+0.7-2004,Plumerai,Available Cloud,NUCLEO-L4R5ZI,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),5.9
+0.7-2004,Plumerai,Available Cloud,NUCLEO-L4R5ZI,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),220.4
+0.7-2004,Plumerai,Available Cloud,NUCLEO-L4R5ZI,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),184.6
+0.7-2005,Plumerai,Available Cloud,CY8CPROTO_062_4343w,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),63.6
+0.7-2005,Plumerai,Available Cloud,CY8CPROTO_062_4343w,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),6.8
+0.7-2005,Plumerai,Available Cloud,CY8CPROTO_062_4343w,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),200
+0.7-2005,Plumerai,Available Cloud,CY8CPROTO_062_4343w,,,Plumerai inference engine,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),202.8
+0.7-2006,Plumerai,Available Cloud,DISCO-F746NG,,,Plumerai inference engine,Arm Cortex-M7,,Tiny,DSCNN,latency (ms),19.5
+0.7-2006,Plumerai,Available Cloud,DISCO-F746NG,,,Plumerai inference engine,Arm Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),2.4
+0.7-2006,Plumerai,Available Cloud,DISCO-F746NG,,,Plumerai inference engine,Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),59.4
+0.7-2006,Plumerai,Available Cloud,DISCO-F746NG,,,Plumerai inference engine,Arm Cortex-M7,,Tiny,ResNet-V1,latency (ms),65.1
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,DSCNN,latency (ms),50.5715
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,DSCNN,Energy in uJ,3796.96
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,FC AutoEncoder,latency (ms),4.61314
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,FC AutoEncoder,Energy in uJ,324.088
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,MobileNetV1 (0.25x),latency (ms),162.364
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,MobileNetV1 (0.25x),Energy in uJ,11851.8
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,ResNet-V1,latency (ms),246.184
+0.7-2007,Renesas,Available Cloud,EK-RA6M4,,,TensorFlowLite for Microcontrollers,Arm Cortex-M33 w/FPU(1),,Tiny,ResNet-V1,Energy in uJ,17723.8
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,DSCNN,latency (ms),81.8465
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,DSCNN,Energy in uJ,4422.68
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,FC AutoEncoder,latency (ms),8.55373
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,FC AutoEncoder,Energy in uJ,437.442
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,MobileNetV1 (0.25x),latency (ms),248.509
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,MobileNetV1 (0.25x),Energy in uJ,13316.4
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,ResNet-V1,latency (ms),289.352
+0.7-2008,Renesas,Available Cloud,RX65N-Cloud-Kit,,,TensorFlowLite for Microcontrollers,Renesas RXv2,,Tiny,ResNet-V1,Energy in uJ,14350.9
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,DSCNN,latency (ms),97.646
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,DSCNN,Energy in uJ,4635.68
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,FC AutoEncoder,latency (ms),9.665
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,FC AutoEncoder,Energy in uJ,431.21
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),latency (ms),254.647
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,MobileNetV1 (0.25x),Energy in uJ,12293.3
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,ResNet-V1,latency (ms),252.78
+0.7-2009,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,,,X-CUBE-AI v7.1.0,Arm Cortex-M4,,Tiny,ResNet-V1,Energy in uJ,12298.3
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,DSCNN,latency (ms),54.812
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,DSCNN,Energy in uJ,1482.4
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,FC AutoEncoder,latency (ms),5.728
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,FC AutoEncoder,Energy in uJ,152.56
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),latency (ms),151.63
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,MobileNetV1 (0.25x),Energy in uJ,4030.97
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,ResNet-V1,latency (ms),158.127
+0.7-2010,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,,,X-CUBE-AI v7.1.0,Arm Cortex-M33,,Tiny,ResNet-V1,Energy in uJ,4151.13
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,DSCNN,latency (ms),22.29
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,DSCNN,Energy in uJ,3713.19
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),2.281
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,FC AutoEncoder,Energy in uJ,349.03
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),64.37
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,MobileNetV1 (0.25x),Energy in uJ,10487.7
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,ResNet-V1,latency (ms),70.363
+0.7-2011,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,,,X-CUBE-AI v7.1.0,ARM Cortex-M7,,Tiny,ResNet-V1,Energy in uJ,11200.2
+0.7-2012,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,,,Syntiant TDK,M0 + HiFi,Syntiant Core 2,Tiny,DSCNN,latency (ms),1.8
+0.7-2012,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,,,Syntiant TDK,M0 + HiFi,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,49.587
+0.7-2013,Syntiant,Available Cloud,syntiant_9120_0v9_30mhz,,,Syntiant TDK,M0 + HiFi,Syntiant Core 2,Tiny,DSCNN,latency (ms),4.3
+0.7-2013,Syntiant,Available Cloud,syntiant_9120_0v9_30mhz,,,Syntiant TDK,M0 + HiFi,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,35.286
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,DSCNN,latency (ms),63.09
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,DSCNN,Energy in uJ,611.493
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,FC AutoEncoder,latency (ms),5.41
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,FC AutoEncoder,Energy in uJ,45.722
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,MobileNetV1 (0.25x),latency (ms),186.19
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,MobileNetV1 (0.25x),Energy in uJ,1721.77
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,ResNet-V1,latency (ms),239.98
+0.7-2014,Silicon Labs,Preview,xG24-DK2601B,,,TensorFlowLite for Microcontrollers; CMSIS-NN; Silicon Labs Gecko SDK,Cortex-M33(1),Silicon Labs MVP(1),Tiny,ResNet-V1,Energy in uJ,2248.02
+0.7-2015,Alibaba,Available Cloud,Nezha,,,Sinian/CSI-NN2,XuanTie C906 RISC-V x 1,,Tiny,,latency (ms),4.702
+0.7-2016,Alibaba,Available Cloud,Nezha,,,Sinian/CSI-NN2,XuanTie C906 RISC-V x 1,,Tiny,,latency (ms),3.122
+0.7-2017,Alibaba,Available Cloud,Nezha,,,Sinian/CSI-NN2,XuanTie C906 RISC-V x 1,,Tiny,,latency (ms),1.202
+0.7-2018,Alibaba,Available Cloud,Nezha,,,Sinian/CSI-NN2,XuanTie C906 RISC-V x 1,,Tiny,,latency (ms),0.208
+0.7-2019,hls4ml-FINN,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,latency (ms),27.3
+0.7-2019,hls4ml-FINN,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Energy in uJ,44330.1
+0.7-2020,hls4ml-FINN,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,latency (ms),0.019
+0.7-2020,hls4ml-FINN,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Energy in uJ,30.1
+0.7-2021,hls4ml-FINN,Available Cloud,Pynq-Z2,,,FINN,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,latency (ms),1.5
+0.7-2021,hls4ml-FINN,Available Cloud,Pynq-Z2,,,FINN,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Energy in uJ,2535.9
+0.7-2022,hls4ml-FINN,Available Cloud,Pynq-Z2,,,FINN,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,latency (ms),0.017
+0.7-2022,hls4ml-FINN,Available Cloud,Pynq-Z2,,,FINN,Dual Core ARM; Cortex-A9 MPCore,Zynq XC7Z020,Tiny,,Energy in uJ,30.9
+0.7-2023,hls4ml-FINN,Available Cloud,Arty A7-100T,,,hls4ml,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,latency (ms),33.1
+0.7-2023,hls4ml-FINN,Available Cloud,Arty A7-100T,,,hls4ml,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,Energy in uJ,73166.3
+0.7-2024,hls4ml-FINN,Available Cloud,Arty A7-100T,,,hls4ml,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,latency (ms),0.045
+0.7-2024,hls4ml-FINN,Available Cloud,Arty A7-100T,,,hls4ml,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,Energy in uJ,98.4
+0.7-2025,hls4ml-FINN,Available Cloud,Arty A7-100T,,,FINN,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,latency (ms),1.5
+0.7-2025,hls4ml-FINN,Available Cloud,Arty A7-100T,,,FINN,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,Energy in uJ,3418.9
+0.7-2026,hls4ml-FINN,Available Cloud,Arty A7-100T,,,FINN,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,latency (ms),0.033
+0.7-2026,hls4ml-FINN,Available Cloud,Arty A7-100T,,,FINN,MicroBlaze (custom),Artix-7 C7A100T,Tiny,,Energy in uJ,53.7

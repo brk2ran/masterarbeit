@@ -1,0 +1,153 @@
+﻿Public ID,Organization,Availability,System Name (Click + for details),Board Name,Host Processor Frequency,Software,Processor,Accelerator,Benchmark,Model MLC,Units,Avg. Result
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,DSCNN,latency (ms),16.7258
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,DSCNN,Energy in uJ,2367.47
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),1.82815
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),50.4083
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),Energy in uJ,7810.7
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,ResNet-V1,latency (ms),53.8387
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-7.3,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,ResNet-V1,Energy in uJ,8471.1
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,DSCNN,latency (ms),16.4
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,DSCNN,Energy in uJ,2362.1
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,FC AutoEncoder,latency (ms),1.8
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,FC AutoEncoder,Energy in uJ,235.8
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),latency (ms),50.3
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,MobileNetV1 (0.25x),Energy in uJ,6928.3
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,ResNet-V1,latency (ms),54.9
+1.1-0001,Krai,Available Cloud,NUCLEO-H7A3ZI-Q-X-CUBE-AI-8.0,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v7.3.0,32-bit Arm Cortex-M7,,Tiny,ResNet-V1,Energy in uJ,7615.4
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),99.8104
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),8.60496
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),300.842
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),389.56
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-NATIVE,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),144
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-NATIVE,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),11.7
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-NATIVE,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),338.9
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-MICROTVM-NATIVE,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),389.1
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),74.7
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,5627.5
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),7.6
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,529.3
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),224.9
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,16536.3
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),226.9
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-7.3,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,17755.4
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),72.7
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,5481.6
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),7.6
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,528.9
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),221.1
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,16573.1
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),222
+1.1-0002,Krai,Available Cloud,NUCLEO-L4R5ZI-X-CUBE-AI-8.0,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,17315.1
+1.1-0003,Krai,Available Cloud,NRF5340-DK-MICROTVM-CMSIS-NN,nRF5340 DK,128 MHz,microTVM,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,DSCNN,latency (ms),76.4877
+1.1-0003,Krai,Available Cloud,NRF5340-DK-MICROTVM-CMSIS-NN,nRF5340 DK,128 MHz,microTVM,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),6.28852
+1.1-0003,Krai,Available Cloud,NRF5340-DK-MICROTVM-CMSIS-NN,nRF5340 DK,128 MHz,microTVM,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),233.318
+1.1-0003,Krai,Available Cloud,NRF5340-DK-MICROTVM-CMSIS-NN,nRF5340 DK,128 MHz,microTVM,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),317.864
+1.1-0004,Nuvoton,Available Cloud,NUMAKER-M467HJ-zephyr,NUMAKER-M467HJ,200 MHz,ONNC,Arm Cortex-M4F,,Tiny,DSCNN,latency (ms),46.1851
+1.1-0004,Nuvoton,Available Cloud,NUMAKER-M467HJ-zephyr,NUMAKER-M467HJ,200 MHz,ONNC,Arm Cortex-M4F,,Tiny,FC AutoEncoder,latency (ms),4.88675
+1.1-0004,Nuvoton,Available Cloud,NUMAKER-M467HJ-zephyr,NUMAKER-M467HJ,200 MHz,ONNC,Arm Cortex-M4F,,Tiny,MobileNetV1 (0.25x),latency (ms),98.7264
+1.1-0004,Nuvoton,Available Cloud,NUMAKER-M467HJ-zephyr,NUMAKER-M467HJ,200 MHz,ONNC,Arm Cortex-M4F,,Tiny,ResNet-V1,latency (ms),171.438
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,latency (ms),15.3532
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,1869.38
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),1.81827
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,221.217
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),29.6288
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,3699.35
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),51.9481
+1.1-0005,STMicroelectronics,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,6310.69
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),62.8733
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,2833.14
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),6.85735
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,293.912
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),118.694
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,5618.28
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),213.995
+1.1-0006,STMicroelectronics,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,7019.09
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,DSCNN,latency (ms),38.5802
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,1004.22
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),4.84987
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,121.446
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),71.5615
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,1920.64
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),128.205
+1.1-0007,STMicroelectronics,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v8.1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,3383.82
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),82.0008
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,3454.85
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),8.07265
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,334.536
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),172.176
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,7477.62
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),298.686
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-mbed-os,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,12684.3
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),93.6
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,4747.9
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),8
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,409.7
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),197.8
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,10412.8
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),296.6
+1.1-0008,Skymizer,Available Cloud,NUCLEO-L4R5ZI-zephyr,NUCLEO-L4R5ZI,120 MHz,ONNC,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,14927.3
+1.1-0009,cTuning,Available Cloud,NUCLEO-L4R5ZI-MicroTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),99.8403
+1.1-0009,cTuning,Available Cloud,NUCLEO-L4R5ZI-MicroTVM-CMSIS-NN,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),389.56
+1.1-0009,cTuning,Available Cloud,NUCLEO-L4R5ZI-MicroTVM-Native,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),144
+1.1-0009,cTuning,Available Cloud,NUCLEO-L4R5ZI-MicroTVM-Native,NUCLEO-L4R5ZI,120 MHz,microTVM,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),389.1
+1.1-0010,fpgaconvnet,Available Cloud,cora-z7,Cora-Z7,667 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,XC7Z007S,Tiny,DSCNN,latency (ms),4.21122
+1.1-0011,fpgaconvnet,Available Cloud,zc706,ZC706 Development Board,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,XC7Z045,Tiny,MobileNetV1 (0.25x),latency (ms),0.720308
+1.1-0011,fpgaconvnet,Available Cloud,zc706,ZC706 Development Board,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,XC7Z045,Tiny,ResNet-V1,latency (ms),0.147285
+1.1-0012,fpgaconvnet,Available Cloud,zedboard,ZedBoard,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,Xilinx Z-7020; XC7Z020,Tiny,DSCNN,latency (ms),0.323846
+1.1-0012,fpgaconvnet,Available Cloud,zedboard,ZedBoard,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,Xilinx Z-7020; XC7Z020,Tiny,MobileNetV1 (0.25x),latency (ms),9.48659
+1.1-0012,fpgaconvnet,Available Cloud,zedboard,ZedBoard,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,Xilinx Z-7020; XC7Z020,Tiny,ResNet-V1,latency (ms),0.41128
+1.1-0013,fpgaconvnet,Available Cloud,zybo,ZyBo,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,XC7Z010,Tiny,DSCNN,latency (ms),2.15105
+1.1-0013,fpgaconvnet,Available Cloud,zybo,ZyBo,650 Mhz,fpgaConvNet (Model + Optimiser),Arm Cortex A9 Based,XC7Z010,Tiny,ResNet-V1,latency (ms),3.14959
+1.1-0014,Plumerai,Available Cloud,CY8CPROTO-062-4343W,CY8CPROTO-062-4343W,150 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),54.0628
+1.1-0014,Plumerai,Available Cloud,CY8CPROTO-062-4343W,CY8CPROTO-062-4343W,150 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),4.45522
+1.1-0014,Plumerai,Available Cloud,CY8CPROTO-062-4343W,CY8CPROTO-062-4343W,150 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),108.295
+1.1-0014,Plumerai,Available Cloud,CY8CPROTO-062-4343W,CY8CPROTO-062-4343W,150 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),188.964
+1.1-0015,Plumerai,Available Cloud,DISCO-F746NG,DISCO-F746NG,216 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,latency (ms),17.7491
+1.1-0015,Plumerai,Available Cloud,DISCO-F746NG,DISCO-F746NG,216 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),1.70881
+1.1-0015,Plumerai,Available Cloud,DISCO-F746NG,DISCO-F746NG,216 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),34.0797
+1.1-0015,Plumerai,Available Cloud,DISCO-F746NG,DISCO-F746NG,216 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),62.8773
+1.1-0016,Plumerai,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),47.7806
+1.1-0016,Plumerai,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),4.05163
+1.1-0016,Plumerai,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),98.7557
+1.1-0016,Plumerai,Available Cloud,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),167.757
+1.1-0017,Plumerai,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,latency (ms),13.8617
+1.1-0017,Plumerai,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),1.34771
+1.1-0017,Plumerai,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),26.8168
+1.1-0017,Plumerai,Available Cloud,NUCLEO-H7A3ZI-Q,NUCLEO-H7A3ZI-Q,280 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),50.9269
+1.1-0018,Plumerai,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,DSCNN,latency (ms),30.0427
+1.1-0018,Plumerai,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),3.67192
+1.1-0018,Plumerai,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),59.4919
+1.1-0018,Plumerai,Available Cloud,NUCLEO-U575ZI-Q,NUCLEO-U575ZI-Q,160 MHz,Plumerai Inference Engine 2023.05,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),104.286
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,latency (ms),1.5
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,43.802
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),latency (ms),4.1
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Energy in uJ,97.164
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,latency (ms),5.1
+1.1-0019,Syntiant,Available Cloud,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Energy in uJ,139.367
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,latency (ms),4.36716
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,31.537
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),latency (ms),12.7226
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Energy in uJ,71.711
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,latency (ms),15.975
+1.1-0019,Syntiant,Available Cloud,syntiant-9120-0v9-30mhz,NDP9120,30.7 MHz,Syntiant TDK+SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Energy in uJ,101.833
+1.1-0020,RoBERT Bosch GmbH,Preview,DISCO-F746NG,DISCO-F746NG,216 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,latency (ms),18.4186
+1.1-0020,RoBERT Bosch GmbH,Preview,DISCO-F746NG,DISCO-F746NG,216 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),1.70261
+1.1-0020,RoBERT Bosch GmbH,Preview,DISCO-F746NG,DISCO-F746NG,216 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),57.18
+1.1-0020,RoBERT Bosch GmbH,Preview,DISCO-F746NG,DISCO-F746NG,216 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),61.5688
+1.1-0021,RoBERT Bosch GmbH,Preview,NUCLEO-G0B1RE,NUCLEO-G0B1RE,64 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M0+,,Tiny,DSCNN,latency (ms),679.348
+1.1-0021,RoBERT Bosch GmbH,Preview,NUCLEO-G0B1RE,NUCLEO-G0B1RE,64 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M0+,,Tiny,FC AutoEncoder,latency (ms),46.5463
+1.1-0021,RoBERT Bosch GmbH,Preview,NUCLEO-G0B1RE,NUCLEO-G0B1RE,64 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M0+,,Tiny,MobileNetV1 (0.25x),latency (ms),1869.16
+1.1-0021,RoBERT Bosch GmbH,Preview,NUCLEO-G0B1RE,NUCLEO-G0B1RE,64 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M0+,,Tiny,ResNet-V1,latency (ms),1669.45
+1.1-0022,RoBERT Bosch GmbH,Preview,NUCLEO-H7A3ZI,NUCLEO-H7A3ZI,280 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,DSCNN,latency (ms),14.7154
+1.1-0022,RoBERT Bosch GmbH,Preview,NUCLEO-H7A3ZI,NUCLEO-H7A3ZI,280 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),1.35633
+1.1-0022,RoBERT Bosch GmbH,Preview,NUCLEO-H7A3ZI,NUCLEO-H7A3ZI,280 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),43.66
+1.1-0022,RoBERT Bosch GmbH,Preview,NUCLEO-H7A3ZI,NUCLEO-H7A3ZI,280 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M7 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),46.8318
+1.1-0023,RoBERT Bosch GmbH,Preview,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,latency (ms),62.6802
+1.1-0023,RoBERT Bosch GmbH,Preview,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),5.65934
+1.1-0023,RoBERT Bosch GmbH,Preview,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),180.73
+1.1-0023,RoBERT Bosch GmbH,Preview,NUCLEO-L4R5ZI,NUCLEO-L4R5ZI,120 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),179.019
+1.1-0024,RoBERT Bosch GmbH,Preview,NUCLEO-U575ZI,NUCLEO-U575ZI-Q,160 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,DSCNN,latency (ms),39.7362
+1.1-0024,RoBERT Bosch GmbH,Preview,NUCLEO-U575ZI,NUCLEO-U575ZI-Q,160 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,FC AutoEncoder,latency (ms),3.80238
+1.1-0024,RoBERT Bosch GmbH,Preview,NUCLEO-U575ZI,NUCLEO-U575ZI-Q,160 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),latency (ms),114.74
+1.1-0024,RoBERT Bosch GmbH,Preview,NUCLEO-U575ZI,NUCLEO-U575ZI-Q,160 MHz,Bosch Hardware-Aware Lowering Engine (HALE) version 1.0,32-bit Arm Cortex-M33 (DSP + FPU),,Tiny,ResNet-V1,latency (ms),117.744
+1.1-0025,kai-jiang,RDI,ZCU106,ZCU106,20 MHz,,RISC-V,ANPU,Tiny,MobileNetV1 (0.25x),latency (ms),0.37

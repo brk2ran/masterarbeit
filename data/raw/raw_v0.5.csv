@@ -1,0 +1,25 @@
+﻿Public ID,Organization,Availability,System Name (Click + for details),Board Name,Host Processor Frequency,Software,Processor,Accelerator,Benchmark,Model MLC,Units,Avg. Result
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,DSCNN,latency (ms),181.917
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,DSCNN,Energy in uJ,7373.7
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,FC AutoEncoder,latency (ms),10.4
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,FC AutoEncoder,Energy in uJ,416.312
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,MobileNetV1 (0.25x),latency (ms),603.136
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,MobileNetV1 (0.25x),Energy in uJ,24320.8
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,ResNet-V1,latency (ms),704.225
+0.5-464,Harvard (Reference),Available Cloud,Nucleo-L4R5ZI,,,Tensorflow Lite for Microcontrollers,Arm Cortex-M4 w/ FPU,,Tiny,ResNet-V1,Energy in uJ,29207
+0.5-465,Peng Cheng Laboratory,Available Cloud,PCL Scepu02,,,TensorFlowLite for Microcontrollers 2.3.1 (modified),RV32IMAC with FPU(1),,Tiny,DSCNN,latency (ms),325.63
+0.5-465,Peng Cheng Laboratory,Available Cloud,PCL Scepu02,,,TensorFlowLite for Microcontrollers 2.3.1 (modified),RV32IMAC with FPU(1),,Tiny,FC AutoEncoder,latency (ms),13.65
+0.5-465,Peng Cheng Laboratory,Available Cloud,PCL Scepu02,,,TensorFlowLite for Microcontrollers 2.3.1 (modified),RV32IMAC with FPU(1),,Tiny,MobileNetV1 (0.25x),latency (ms),846.74
+0.5-465,Peng Cheng Laboratory,Available Cloud,PCL Scepu02,,,TensorFlowLite for Microcontrollers 2.3.1 (modified),RV32IMAC with FPU(1),,Tiny,ResNet-V1,latency (ms),1239.16
+0.5-466,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,DSCNN,latency (ms),0.39323
+0.5-466,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,FC AutoEncoder,latency (ms),0.168549
+0.5-466,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,MobileNetV1 (0.25x),latency (ms),3.74547
+0.5-466,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,ResNet-V1,latency (ms),1.31235
+0.5-467,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,DSCNN,latency (ms),0.42147
+0.5-467,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,FC AutoEncoder,latency (ms),0.192092
+0.5-467,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,MobileNetV1 (0.25x),latency (ms),2.5993
+0.5-467,Latent AI,Available Cloud,Raspberry Pi 4,,,LEIP Framework,Broadcom BCM2711,,Tiny,ResNet-V1,latency (ms),1.07149
+0.5-468,Syntiant,Available Cloud,NDP9120,,,TensorFlow; Syntiant TDK; SDK,Cortex-M0 (1),Syntiant Core 2,Tiny,DSCNN,latency (ms),5.95
+0.5-469,hls4ml,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Xilinx Z-7020; XC7Z020,Tiny,,latency (ms),3.998
+0.5-469,hls4ml,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Xilinx Z-7020; XC7Z020,Tiny,,AUC,0.82
+0.5-469,hls4ml,Available Cloud,Pynq-Z2,,,hls4ml,Dual Core ARM; Cortex-A9 MPCore,Xilinx Z-7020; XC7Z020,Tiny,,Accuracy,0.77

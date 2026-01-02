@@ -1,0 +1,92 @@
+﻿Public ID,Organization,Availability,System Name (Click + for details),Board Name,Host Processor Frequency,Software,Processor,Accelerator,Benchmark,Model MLC,Units,Avg. Result
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_float,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,16.78
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_float,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,360.62
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_float,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,479.85
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_int8,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,DSCNN,Latency in ms,54.15
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_int8,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,5.97
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_int8,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,154.68
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_int8,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,162.21
+1.2-0001,bosch,Available,CY8CPROTO_062_4343W_int8_max_performance,CY8CPROTO-062-4343W,150 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,4.93
+1.2-0002,bosch,Available,DISCO_F746NG_int8,DISCO-F746NG,216 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,DSCNN,Latency in ms,18.96
+1.2-0002,bosch,Available,DISCO_F746NG_int8,DISCO-F746NG,216 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,1.71
+1.2-0002,bosch,Available,DISCO_F746NG_int8,DISCO-F746NG,216 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,57.25
+1.2-0002,bosch,Available,DISCO_F746NG_int8,DISCO-F746NG,216 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,62.55
+1.2-0002,bosch,Available,DISCO_F746NG_int8_max_performance,DISCO-F746NG,216 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,1.42
+1.2-0003,bosch,Available,NUCLEO_G0B1RE_int8,NUCLEO-G0B1RE,64 MHz,,32-bit Arm® Cortex®-M0+,,Tiny,DSCNN,Latency in ms,474.61
+1.2-0003,bosch,Available,NUCLEO_G0B1RE_int8,NUCLEO-G0B1RE,64 MHz,,32-bit Arm® Cortex®-M0+,,Tiny,FC AutoEncoder,Latency in ms,40.89
+1.2-0003,bosch,Available,NUCLEO_G0B1RE_int8,NUCLEO-G0B1RE,64 MHz,,32-bit Arm® Cortex®-M0+,,Tiny,MobileNetV1 (0.25x),Latency in ms,1414.43
+1.2-0003,bosch,Available,NUCLEO_G0B1RE_int8,NUCLEO-G0B1RE,64 MHz,,32-bit Arm® Cortex®-M0+,,Tiny,ResNet-V1,Latency in ms,1522.07
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_float,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,5.23
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_float,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,81.42
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_float,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,124.22
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,DSCNN,Latency in ms,14.69
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,1.36
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,43.76
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,45.85
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8_max_performance,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,1.08
+1.2-0004,bosch,Available,NUCLEO_H7A3ZI_int8_min_ram,NUCLEO-H7A3ZI,280 MHz,,32-bit Arm® Cortex®-M7 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,84.51
+1.2-0005,bosch,Available,NUCLEO_L4R5ZI_int8,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,DSCNN,Latency in ms,60.16
+1.2-0005,bosch,Available,NUCLEO_L4R5ZI_int8,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,5.84
+1.2-0005,bosch,Available,NUCLEO_L4R5ZI_int8,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,180.51
+1.2-0005,bosch,Available,NUCLEO_L4R5ZI_int8,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,180.54
+1.2-0005,bosch,Available,NUCLEO_L4R5ZI_int8_max_performance,NUCLEO-L4R5ZI,120 MHz,,32-bit Arm® Cortex®-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,4.73
+1.2-0006,bosch,Available,NUCLEO_U575ZI_int8,NUCLEO-U575ZI-Q,160 MHz,,32-bit Arm® Cortex®-M33 (DSP + FPU),,Tiny,DSCNN,Latency in ms,38.58
+1.2-0006,bosch,Available,NUCLEO_U575ZI_int8,NUCLEO-U575ZI-Q,160 MHz,,32-bit Arm® Cortex®-M33 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,3.8
+1.2-0006,bosch,Available,NUCLEO_U575ZI_int8,NUCLEO-U575ZI-Q,160 MHz,,32-bit Arm® Cortex®-M33 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,119.83
+1.2-0006,bosch,Available,NUCLEO_U575ZI_int8,NUCLEO-U575ZI-Q,160 MHz,,32-bit Arm® Cortex®-M33 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,120.54
+1.2-0006,bosch,Available,NUCLEO_U575ZI_int8_max_performance,NUCLEO-U575ZI-Q,160 MHz,,32-bit Arm® Cortex®-M33 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,3.09
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_float,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,FC AutoEncoder,Latency in ms,6.18
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_float,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,ResNet-V1,Latency in ms,222.47
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_int8,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,DSCNN,Latency in ms,63.65
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_int8,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,FC AutoEncoder,Latency in ms,7.44
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_int8,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,ResNet-V1,Latency in ms,232.88
+1.2-0007,bosch,Available,RENESAS_RH850_F1KMS4_int8_max_performance,Renesas RH850/F1KM-S4 R7F701649,240 MHz,,32-bit RH850G3KH2.0,,Tiny,FC AutoEncoder,Latency in ms,5.64
+1.2-0008,Qualcomm,Available,Snapdragon_8_Gen_3_Mobile_Platform_MTP,Snapdragon 8 Gen 3 Mobile HDK,Prime Core up to 3.4Ghz 5 Performance Cores up to 3.2Ghz 2 Efficiency Cores up to 2.3Ghz,Qualcomm AI Stack,Qualcomm Kryo CPU,Qualcomm Sensing Hub,Tiny,DSCNN,Latency in ms,0.09
+1.2-0008,Qualcomm,Available,Snapdragon_8_Gen_3_Mobile_Platform_MTP,Snapdragon 8 Gen 3 Mobile HDK,Prime Core up to 3.4Ghz 5 Performance Cores up to 3.2Ghz 2 Efficiency Cores up to 2.3Ghz,Qualcomm AI Stack,Qualcomm Kryo CPU,Qualcomm Sensing Hub,Tiny,FC AutoEncoder,Latency in ms,0.07
+1.2-0008,Qualcomm,Available,Snapdragon_8_Gen_3_Mobile_Platform_MTP,Snapdragon 8 Gen 3 Mobile HDK,Prime Core up to 3.4Ghz 5 Performance Cores up to 3.2Ghz 2 Efficiency Cores up to 2.3Ghz,Qualcomm AI Stack,Qualcomm Kryo CPU,Qualcomm Sensing Hub,Tiny,MobileNetV1 (0.25x),Latency in ms,0.19
+1.2-0008,Qualcomm,Available,Snapdragon_8_Gen_3_Mobile_Platform_MTP,Snapdragon 8 Gen 3 Mobile HDK,Prime Core up to 3.4Ghz 5 Performance Cores up to 3.2Ghz 2 Efficiency Cores up to 2.3Ghz,Qualcomm AI Stack,Qualcomm Kryo CPU,Qualcomm Sensing Hub,Tiny,ResNet-V1,Latency in ms,0.15
+1.2-0009,Renesas,Available,EK-RA8D1,EK-RA8D1,480 MHz,,32-bit Arm® Cortex®-M85,,Tiny,DSCNN,Latency in ms,3.46
+1.2-0009,Renesas,Available,EK-RA8D1,EK-RA8D1,480 MHz,,32-bit Arm® Cortex®-M85,,Tiny,FC AutoEncoder,Latency in ms,0.53
+1.2-0009,Renesas,Available,EK-RA8D1,EK-RA8D1,480 MHz,,32-bit Arm® Cortex®-M85,,Tiny,MobileNetV1 (0.25x),Latency in ms,13.39
+1.2-0009,Renesas,Available,EK-RA8D1,EK-RA8D1,480 MHz,,32-bit Arm® Cortex®-M85,,Tiny,ResNet-V1,Latency in ms,8.48
+1.2-0010,Skymizer,Available,TinkerV-linux-andes_nn,ASUS Tinker V,1.0 GHz,{'andes_nn': {'SHA': ''}},RISC-V AndesCore™ AX45MP Single core,,Tiny,FC AutoEncoder,Latency in ms,0.37
+1.2-0010,Skymizer,Available,TinkerV-linux-andes_nn,ASUS Tinker V,1.0 GHz,{'andes_nn': {'SHA': ''}},RISC-V AndesCore™ AX45MP Single core,,Tiny,ResNet-V1,Latency in ms,33.37
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,DSCNN,Latency in ms,11.32
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,DSCNN,Energy in uJ,1375.6
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,FC AutoEncoder,Latency in ms,1.23
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,FC AutoEncoder,Energy in uJ,165.73
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,MobileNetV1 (0.25x),Latency in ms,23.8
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,MobileNetV1 (0.25x),Energy in uJ,2965.46
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,ResNet-V1,Latency in ms,40.84
+1.2-0011,STMicroelectronics,Available,NUCLEO_H7A3ZI_Q,NUCLEO-H7A3ZI-Q,280 MHz,X-CUBE-AI v9.0.0,32-Bit ARM Cortex-M7,,Tiny,ResNet-V1,Energy in uJ,5090.28
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Latency in ms,43.19
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,DSCNN,Energy in uJ,1820.45
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Latency in ms,5.26
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,FC AutoEncoder,Energy in uJ,203.37
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Latency in ms,88.93
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,MobileNetV1 (0.25x),Energy in uJ,3894.57
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Latency in ms,165.13
+1.2-0012,STMicroelectronics,Available,NUCLEO_L4R5ZI,NUCLEO-L4R5ZI,120 MHz,X-CUBE-AI v9.0,32-bit Arm Cortex-M4 (DSP + FPU),,Tiny,ResNet-V1,Energy in uJ,6919.38
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,DSCNN,Latency in ms,29.06
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,DSCNN,Energy in uJ,656.16
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,FC AutoEncoder,Latency in ms,3.43
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,FC AutoEncoder,Energy in uJ,81.88
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,MobileNetV1 (0.25x),Latency in ms,59.28
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,MobileNetV1 (0.25x),Energy in uJ,1354.69
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,ResNet-V1,Latency in ms,111.07
+1.2-0013,STMicroelectronics,Available,NUCLEO_U575ZI_Q,NUCLEO-U575ZI-Q,160 MHz,X-CUBE-AI v9.0,Arm Cortex-M33 32-bit RISC core,,Tiny,ResNet-V1,Energy in uJ,2578.97
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Latency in ms,4.37
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,31.54
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Latency in ms,12.72
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Energy in uJ,71.71
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Latency in ms,15.97
+1.2-0014,syntiant,Available,syntiant_9120_0v9_30mhz,NDP9120,30.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Energy in uJ,101.83
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Latency in ms,1.48
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,DSCNN,Energy in uJ,43.8
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Latency in ms,4.1
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,MobileNetV1 (0.25x),Energy in uJ,97.16
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Latency in ms,5.12
+1.2-0014,syntiant,Available,syntiant_9120_1v1_98mhz,NDP9120,98.7 MHz,TensorFlow Syntiant SDK,HiFi3 + M0,Syntiant Core 2,Tiny,ResNet-V1,Energy in uJ,139.37
+1.2-0015,kai_jiang,rdi,LC236R5E176_BOARD_V2.0,LC236R5E176_BOARD_V2.0,277.5M,self-developed,RISC-V,,Tiny,MobileNetV1 (0.25x),Latency in ms,120.28
+1.2-0015,kai_jiang,rdi,LC236R5E176_BOARD_V2.0,LC236R5E176_BOARD_V2.0,277.5M,self-developed,RISC-V,,Tiny,ResNet-V1,Latency in ms,108
+1.2-0016,kai_jiang,rdi,VCU128,VCU128,40M,self-developed,RISC-V,ANPU,Tiny,MobileNetV1 (0.25x),Latency in ms,0.29
