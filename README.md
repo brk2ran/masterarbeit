@@ -13,16 +13,16 @@ Reproduzierbare Python-Pipeline (VS Code, Git, venv) zur explorativen Datenanaly
 ## Repo-Struktur
 ```text
 data/
-  raw/                 # Rohdaten (CSV-Exports: raw_v0.5.csv ... raw_v1.3.csv)
-  interim/              # Zwischenartefakte (Parquet)
-docs/                   # Dokumentation/Validierungsreports (CSV/MD)
-notebooks/              # Explorative Notebooks
+  raw/                  # Rohdaten (CSV-Exports: raw_v0.5.csv ... raw_v1.3.csv)
+  interim/               # Zwischenartefakte (Parquet)
+docs/                    # Dokumentation/Validierungsreports (CSV/MD)
+notebooks/               # Explorative Notebooks
 reports/
-  tables/               # EDA-Tabellen (CSV) – versioniert
-  figures/              # Plots (PNG) – versioniert
+  tables/                # EDA-Tabellen (CSV) – versioniert
+  figures/               # Plots (PNG/SVG) – versioniert
 src/
-  data_preprocessing.py # Ingestion + Normalisierung + Validierungsreport + Parquet-Export
-  features.py           # Subset-Definitionen + Coverage-Utilities
-  eda.py                # Generiert Tabellen nach reports/tables/
-  plots.py              # Generiert Plots nach reports/figures/
-  clustering.py         # (optional) Clustering-Analysen
+  data_preprocessing.py  # Ingestion + Normalisierung + Validierungsreport + Parquet-Export
+  features.py            # Canonical Features + Analyse-Subsets + Coverage Utilities
+  eda.py                 # Generiert Tabellen nach reports/tables/
+  plots.py               # Generiert Plots nach reports/figures/
+  clustering.py          # (optional) Clustering-Analysen
