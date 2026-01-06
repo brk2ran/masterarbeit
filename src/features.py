@@ -1,371 +1,267 @@
-# src/features.py
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Iterable
 
 import pandas as pd
 
 
-# ------------------------------------------------------------
-# Canonical vocab / configuration
-# ------------------------------------------------------------
+# Primärer Analyse-Scope (dein Fokus)
+PRIMARY_TASKS = ("AD", "IC", "KWS", "VWW")
 
-PRIMARY_TASKS = ("AD", "IC", "KWS", "VWW")  # Fokus deiner bisherigen Trends
-EXTENDED_TASKS = ("SWW",)  # Streaming Wakeword (v1.3)
-TASK_ORDER = (*PRIMARY_TASKS, *EXTENDED_TASKS, "UNKNOWN")
+# Interne Labels
+TASK_UNKNOWN = "UNKNOWN"
+TASK_OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
-MODEL_ORDER = (
-    "DS-CNN",
-    "1D DS-CNN",
-    "FC AutoEncoder",
-    "MobileNetV1 (0.25x)",
-    "ResNet-V1",
-    "Dense",
-    "NULL",
-    "UNKNOWN",
-)
+MODEL_UNKNOWN = "UNKNOWN"
+MODEL_NULL = "NULL"
 
-MODE_ORDER = ("single_stream", "offline", "streaming", "unknown")
+# Canonical Model Tokens (kompakt, stabil für Groupbys)
+MODEL_DS_CNN = "DS_CNN"
+MODEL_1D_DS_CNN = "1D_DS_CNN"
+MODEL_FC_AE = "FC_AE"
+MODEL_MOBILENETV1 = "MOBILENETV1"
+MODEL_RESNET_V1 = "RESNET_V1"
 
-
-@dataclass(frozen=True)
-class CanonicalColumns:
-    # raw inputs (optional)
-    task_raw: str = "task"
-    model_raw: str = "model_mlc"
-    units: str = "units"
-    benchmark: str = "benchmark"
-
-    # metrics (optional)
-    latency_us: str = "latency_us"
-    energy_uj: str = "energy_uj"
-    power_mw: str = "power_mw"
-    accuracy: str = "accuracy"
-    auc: str = "auc"
-
-    # metadata (optional)
-    processor: str = "processor"
-    accelerator: str = "accelerator"
-    software: str = "software"
-    round: str = "round"
+MODE_UNKNOWN = "UNKNOWN"
+MODE_SINGLE_STREAM = "single_stream"
+MODE_OFFLINE = "offline"
+MODE_OUT_OF_SCOPE = "out_of_scope"
 
 
-COL = CanonicalColumns()
-
-
-# ------------------------------------------------------------
-# Helpers: string normalization
-# ------------------------------------------------------------
-
-def _norm_str(x: object) -> str:
-    if x is None or (isinstance(x, float) and pd.isna(x)):
+# -----------------------------
+# Canonicalization helpers
+# -----------------------------
+def _norm(s: object) -> str:
+    if s is None or (isinstance(s, float) and pd.isna(s)):
         return ""
-    return str(x).strip()
+    return str(s).strip()
 
 
-def _norm_key(x: object) -> str:
-    """Lowercase, collapse whitespace, normalize hyphens."""
-    s = _norm_str(x).lower()
-    s = re.sub(r"\s+", " ", s)
-    s = s.replace("–", "-").replace("—", "-")
-    return s
-
-
-def _is_null_like(model: str) -> bool:
-    s = _norm_key(model)
-    return s in ("", "nan", "none", "null", "<na>")
-
-
-# ------------------------------------------------------------
-# Canonicalization: model_mlc
-# ------------------------------------------------------------
-
-def canon_model_mlc(model: object) -> str:
+def canon_model_mlc(model_mlc: object) -> str:
     """
-    Mappt heterogene Model-Labels aus MLCommons-Exports auf kanonische Namen.
-
-    Wichtig:
-      - "1D DS-CNN" wird NICHT zu "DS-CNN" gemappt.
-        Grund: Streaming Wakeword (streaming) ist konzeptionell ein eigener Benchmark/Mode.
+    Canonicalize Model MLC to a compact token.
+    Wichtig: 1D DS-CNN bleibt erkennbar (MODEL_1D_DS_CNN), wird aber später als OUT_OF_SCOPE markiert.
     """
-    raw = _norm_str(model)
-    if _is_null_like(raw):
-        return "NULL"
+    s = _norm(model_mlc)
+    if not s or s.lower() in {"null", "none", "nan", "<na>"}:
+        return MODEL_NULL
 
-    s = _norm_key(raw)
+    s_low = s.lower()
 
     # 1D DS-CNN (Streaming Wakeword)
-    if "1d" in s and ("ds-cnn" in s or "dscnn" in s or "ds cnn" in s):
-        return "1D DS-CNN"
+    if "1d" in s_low and ("ds-cnn" in s_low or "ds cnn" in s_low or "ds_cnn" in s_low):
+        return MODEL_1D_DS_CNN
 
     # DS-CNN (Keyword Spotting)
-    if any(k in s for k in ("ds-cnn", "dscnn", "ds cnn")):
-        return "DS-CNN"
+    # Achtung: "DS-CNN" ist in MLPerf Tiny üblich als DS-CNN / DS CNN / DSCNN
+    if "ds-cnn" in s_low or "ds cnn" in s_low or re.fullmatch(r"dscnn", s_low):
+        return MODEL_DS_CNN
 
-    # Autoencoder / Dense
-    if "autoencoder" in s:
-        return "FC AutoEncoder"
-    if s == "dense" or " dense" in s or s.endswith("dense"):
-        return "Dense"
+    # FC AutoEncoder / Dense AE
+    if "autoencoder" in s_low or "fc autoencoder" in s_low or "fc_autoencoder" in s_low or "dense" == s_low:
+        return MODEL_FC_AE
 
-    # Vision models
-    if "mobilenet" in s:
-        # häufig "MobileNetV1 (0.25x)" (VWW)
-        return "MobileNetV1 (0.25x)"
-    if "resnet" in s:
-        # häufig "ResNet-V1" (IC)
-        return "ResNet-V1"
+    # MobileNetV1
+    if "mobilenet" in s_low:
+        return MODEL_MOBILENETV1
 
-    # Fallback
-    return "UNKNOWN"
+    # ResNet-V1
+    if "resnet" in s_low:
+        return MODEL_RESNET_V1
 
-
-def model_family(model_canon: str) -> str:
-    """
-    Grobe Modellfamilie für Gruppierungen/EDA.
-    """
-    m = model_canon
-    if m in ("DS-CNN", "1D DS-CNN"):
-        return "DS-CNN"
-    if m in ("FC AutoEncoder", "Dense"):
-        return "AutoEncoder/Dense"
-    if m == "MobileNetV1 (0.25x)":
-        return "MobileNet"
-    if m == "ResNet-V1":
-        return "ResNet"
-    if m == "NULL":
-        return "NULL"
-    return "UNKNOWN"
-
-
-def model_dim(model_canon: str) -> str:
-    """
-    Dimensions-Tag aus der kanonischen Modellbezeichnung.
-    - "1D" für 1D DS-CNN
-    - sonst "2D_or_unspecified" (weil Exporte oft nicht explizit sind)
-    """
-    if model_canon == "1D DS-CNN":
-        return "1D"
-    if model_canon in ("NULL", "UNKNOWN"):
-        return "unknown"
-    return "2D_or_unspecified"
-
-
-# ------------------------------------------------------------
-# Canonicalization: task
-# ------------------------------------------------------------
-
-def _canon_task_from_raw(task: object) -> str:
-    s = _norm_key(task)
-    if s in ("ad", "anomaly detection", "anomaly"):
-        return "AD"
-    if s in ("ic", "image classification", "cifar-10", "cifar10"):
-        return "IC"
-    if s in ("kws", "keyword spotting", "keyword"):
-        return "KWS"
-    if s in ("vww", "visual wake words", "person detection", "person"):
-        return "VWW"
-    if s in ("sww", "streaming wakeword", "streaming wake word", "streaming"):
-        return "SWW"
-    if s in ("unknown", "na", "n/a", ""):
-        return "UNKNOWN"
-    # unbekannte Labels nicht wegwerfen, aber als UNKNOWN behandeln
-    return "UNKNOWN"
+    return MODEL_UNKNOWN
 
 
 def infer_task_from_model(model_canon: str) -> str:
     """
-    Inferenz von Task aus kanonischem Modellnamen (Fallback).
+    Fallback: wenn Task fehlt/unklar, kann man ihn aus Model MLC ableiten (MLPerf Tiny Konvention).
     """
-    if model_canon == "1D DS-CNN":
-        return "SWW"
-    if model_canon == "DS-CNN":
-        return "KWS"
-    if model_canon == "MobileNetV1 (0.25x)":
-        return "VWW"
-    if model_canon == "ResNet-V1":
-        return "IC"
-    if model_canon in ("FC AutoEncoder", "Dense"):
+    if model_canon == MODEL_FC_AE:
         return "AD"
-    return "UNKNOWN"
+    if model_canon == MODEL_RESNET_V1:
+        return "IC"
+    if model_canon == MODEL_MOBILENETV1:
+        return "VWW"
+    if model_canon == MODEL_DS_CNN:
+        return "KWS"
+    if model_canon == MODEL_1D_DS_CNN:
+        # bewusst als out-of-scope markiert (Streaming Wakeword)
+        return TASK_OUT_OF_SCOPE
+    return TASK_UNKNOWN
 
 
-def canon_task(task: object, model_canon: str) -> str:
+def canon_task(task: object, *, model_canon: str) -> str:
     """
-    Korrigiert/vereinheitlicht Task:
-      1) Raw task normalisieren (falls vorhanden)
-      2) Falls UNKNOWN oder inkonsistent, aus model_canon ableiten
-      3) Speziell: Wenn raw als KWS kommt, aber model_canon == "1D DS-CNN" => SWW
+    Canonicalize task.
+    - Wenn Model 1D_DS_CNN -> OUT_OF_SCOPE.
+    - Wenn Task fehlt, inferiere aus Model.
     """
-    t = _canon_task_from_raw(task)
+    if model_canon == MODEL_1D_DS_CNN:
+        return TASK_OUT_OF_SCOPE
 
-    # Spezifische Korrektur: 1D DS-CNN ist Streaming Wakeword (nicht KWS)
-    if model_canon == "1D DS-CNN":
-        return "SWW"
-
-    # wenn raw task fehlt/unknown -> aus Modell ableiten
-    if t == "UNKNOWN":
+    t = _norm(task).upper()
+    if not t or t in {"N/A", "NA", "NONE", "NAN", "<NA>"}:
         return infer_task_from_model(model_canon)
 
-    # optionaler Konsistenz-Guard: Wenn raw task stark widerspricht, Modell-Fallback
-    inferred = infer_task_from_model(model_canon)
-    if inferred != "UNKNOWN" and t != inferred:
-        # Beispiel: raw sagt KWS, aber Modell ist ResNet -> dann ist raw vermutlich falsch/Artefakt
-        return inferred
+    # akzeptiere nur die primären Tasks
+    if t in PRIMARY_TASKS:
+        return t
 
-    return t
+    # alles andere ist für deine Arbeit "nicht zuordenbar"
+    return TASK_UNKNOWN
 
 
-# ------------------------------------------------------------
-# Canonicalization: mode (optional)
-# ------------------------------------------------------------
-
-def infer_mode(task_canon: str, model_canon: str, units: object = None) -> str:
+def infer_mode(task_canon: str) -> str:
     """
-    Mode ist in deinen CSV-Exports nicht immer direkt vorhanden.
-    Minimaler, robuster Heuristik-Ansatz:
-      - Streaming Wakeword => streaming
-      - KWS => offline (in MLPerf Tiny häufig als "Single-stream, Offline" geführt)
-      - sonst => single_stream
+    Mode ist in MLPerf Tiny nicht immer sauber im CSV; wir leiten ihn aus dem Task ab.
     """
-    if task_canon == "SWW" or model_canon == "1D DS-CNN":
-        return "streaming"
+    if task_canon == TASK_OUT_OF_SCOPE:
+        return MODE_OUT_OF_SCOPE
     if task_canon == "KWS":
-        return "offline"
-    if task_canon in ("AD", "IC", "VWW"):
-        return "single_stream"
-    return "unknown"
+        return MODE_OFFLINE
+    if task_canon in {"AD", "IC", "VWW"}:
+        return MODE_SINGLE_STREAM
+    return MODE_UNKNOWN
 
 
-# ------------------------------------------------------------
-# Numeric helpers (safe parsing)
-# ------------------------------------------------------------
-
-_FREQ_RE = re.compile(r"(?P<val>\d+(?:\.\d+)?)\s*(?P<unit>ghz|mhz|khz)\b", re.IGNORECASE)
-
-
-def parse_freq_mhz(text: object) -> Optional[float]:
-    """
-    Extrahiert eine Frequenz aus Freitext und gibt MHz zurück.
-    Beispiele: "80MHz", "1.2 GHz", "500 khz"
-    """
-    s = _norm_str(text)
-    if not s:
-        return None
-    m = _FREQ_RE.search(s)
-    if not m:
-        return None
-    val = float(m.group("val"))
-    unit = m.group("unit").lower()
-    if unit == "ghz":
-        return val * 1000.0
-    if unit == "mhz":
-        return val
-    if unit == "khz":
-        return val / 1000.0
-    return None
-
-
-# ------------------------------------------------------------
-# Public API: feature engineering
-# ------------------------------------------------------------
-
+# -----------------------------
+# Public API: add_features + EDA utilities
+# -----------------------------
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Ergänzt robuste, reproduzierbare Features für EDA/Trends/Clustering.
-
-    Output-Spalten (neu):
-      - model_mlc_canon, model_family, model_dim
-      - task_canon, mode_canon
-      - has_latency, has_energy, has_power, has_quality
-      - quality_value, quality_metric
-      - has_accelerator, software_norm
-      - processor_freq_mhz (best-effort aus Text)
-      - round_value (numeric für Sorting)
+    Adds:
+      - model_mlc_canon
+      - task_canon
+      - mode_canon
+      - out_of_scope (bool)
+      - in_scope (bool; PRIMARY_TASKS only)
     """
-    out = df.copy()
+    d = df.copy()
 
-    # --- canonical model ---
-    model_raw = out[COL.model_raw] if COL.model_raw in out.columns else pd.Series([""] * len(out))
-    out["model_mlc_canon"] = model_raw.map(canon_model_mlc)
-    out["model_family"] = out["model_mlc_canon"].map(model_family)
-    out["model_dim"] = out["model_mlc_canon"].map(model_dim)
+    if "model_mlc" not in d.columns:
+        d["model_mlc"] = pd.NA
+    if "task" not in d.columns:
+        d["task"] = pd.NA
 
-    # --- canonical task ---
-    task_raw = out[COL.task_raw] if COL.task_raw in out.columns else pd.Series([""] * len(out))
-    out["task_canon"] = [
-        canon_task(t, m) for t, m in zip(task_raw.tolist(), out["model_mlc_canon"].tolist())
+    d["model_mlc_canon"] = d["model_mlc"].map(canon_model_mlc)
+
+    d["task_canon"] = [
+        canon_task(t, model_canon=m)
+        for t, m in zip(d["task"], d["model_mlc_canon"])
     ]
 
-    # --- mode ---
-    units = out[COL.units] if COL.units in out.columns else pd.Series([""] * len(out))
-    out["mode_canon"] = [
-        infer_mode(t, m, u) for t, m, u in zip(out["task_canon"], out["model_mlc_canon"], units)
-    ]
+    d["mode_canon"] = d["task_canon"].map(infer_mode)
 
-    # --- metric availability flags ---
-    if COL.latency_us in out.columns:
-        out["has_latency"] = out[COL.latency_us].notna()
-    else:
-        out["has_latency"] = False
+    d["out_of_scope"] = d["task_canon"].eq(TASK_OUT_OF_SCOPE)
+    d["in_scope"] = d["task_canon"].isin(PRIMARY_TASKS)
 
-    if COL.energy_uj in out.columns:
-        out["has_energy"] = out[COL.energy_uj].notna()
-    else:
-        out["has_energy"] = False
-
-    if COL.power_mw in out.columns:
-        out["has_power"] = out[COL.power_mw].notna()
-    else:
-        out["has_power"] = False
-
-    # Quality: accuracy/auc
-    acc = out[COL.accuracy] if COL.accuracy in out.columns else pd.Series([pd.NA] * len(out))
-    auc = out[COL.auc] if COL.auc in out.columns else pd.Series([pd.NA] * len(out))
-
-    # prefer AUC for AD / Streaming Wakeword? (SWW hat andere Quality; in Exports oft nicht als AUC/accuracy drin)
-    quality_value = acc.copy()
-    quality_metric = pd.Series(["accuracy"] * len(out))
-
-    use_auc = (out["task_canon"] == "AD") & auc.notna()
-    quality_value.loc[use_auc] = auc.loc[use_auc]
-    quality_metric.loc[use_auc] = "auc"
-
-    out["quality_value"] = quality_value
-    out["quality_metric"] = quality_metric
-    out["has_quality"] = out["quality_value"].notna()
-
-    # --- metadata convenience ---
-    if COL.accelerator in out.columns:
-        out["has_accelerator"] = out[COL.accelerator].astype(str).map(_norm_key).ne("")
-        # "null" strings -> False
-        out["has_accelerator"] = out["has_accelerator"] & ~out[COL.accelerator].astype(str).map(_is_null_like)
-    else:
-        out["has_accelerator"] = False
-
-    if COL.software in out.columns:
-        out["software_norm"] = out[COL.software].astype(str).map(_norm_key)
-    else:
-        out["software_norm"] = ""
-
-    # --- best-effort frequency parse from processor text ---
-    proc_text = out[COL.processor] if COL.processor in out.columns else pd.Series([""] * len(out))
-    out["processor_freq_mhz"] = proc_text.map(parse_freq_mhz)
-
-    # --- numeric round for sorting ---
-    if COL.round in out.columns:
-        out["round_value"] = out[COL.round].astype(str).str.replace("v", "", regex=False).apply(
-            lambda x: float(x) if re.fullmatch(r"\d+(\.\d+)?", x.strip()) else float("nan")
-        )
-    else:
-        out["round_value"] = float("nan")
-
-    return out
+    return d
 
 
-# Backwards-compatible aliases (falls eda.py o.ä. andere Namen nutzt)
-apply_features = add_features
-build_features = add_features
-enrich_features = add_features
+def get_analysis_subsets(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """
+    Liefert konsistente Subsets, die überall gleich verwendet werden.
+    OUT_OF_SCOPE ist explizit ausgeschlossen.
+    """
+    d = add_features(df)
+
+    ds_base = d[d["in_scope"]].copy()
+    ds_latency = ds_base[ds_base["latency_us"].notna()].copy()
+
+    ds_energy = ds_base[ds_base["energy_uj"].notna()].copy() if "energy_uj" in ds_base.columns else ds_base.iloc[0:0].copy()
+    ds_power = ds_base[ds_base["power_mw"].notna()].copy() if "power_mw" in ds_base.columns else ds_base.iloc[0:0].copy()
+    ds_accuracy = ds_base[ds_base["accuracy"].notna()].copy() if "accuracy" in ds_base.columns else ds_base.iloc[0:0].copy()
+    ds_auc = ds_base[ds_base["auc"].notna()].copy() if "auc" in ds_base.columns else ds_base.iloc[0:0].copy()
+
+    ds_out = d[d["out_of_scope"]].copy()
+    ds_unknown = d[(~d["out_of_scope"]) & (d["task_canon"] == TASK_UNKNOWN)].copy()
+
+    return {
+        "DS_BASE": ds_base,
+        "DS_LATENCY": ds_latency,
+        "DS_ENERGY": ds_energy,
+        "DS_POWER": ds_power,
+        "DS_ACCURACY": ds_accuracy,
+        "DS_AUC": ds_auc,
+        "DS_OUT_OF_SCOPE": ds_out,
+        "DS_UNKNOWN": ds_unknown,
+    }
+
+
+def round_task_counts(
+    df: pd.DataFrame,
+    *,
+    include_unknown: bool = True,
+    include_out_of_scope: bool = False,
+) -> pd.DataFrame:
+    """
+    Coverage Round×Task (Zeilenanzahl) als Pivot.
+    Default: UNKNOWN drin, OUT_OF_SCOPE raus.
+    """
+    d = add_features(df)
+
+    if not include_out_of_scope:
+        d = d[~d["out_of_scope"]].copy()
+
+    if not include_unknown:
+        d = d[d["task_canon"] != TASK_UNKNOWN].copy()
+
+    g = (
+        d.groupby(["round", "task_canon"], dropna=False)
+        .size()
+        .rename("rows")
+        .reset_index()
+    )
+
+    # Pivot für schnell lesbare Coverage-Übersicht
+    out = g.pivot_table(index="round", columns="task_canon", values="rows", aggfunc="sum", fill_value=0)
+    out = out.reset_index()
+
+    # stabile Spaltenreihenfolge
+    ordered_cols = ["round"] + [t for t in PRIMARY_TASKS if t in out.columns]
+    if include_unknown and TASK_UNKNOWN in out.columns:
+        ordered_cols.append(TASK_UNKNOWN)
+    if include_out_of_scope and TASK_OUT_OF_SCOPE in out.columns:
+        ordered_cols.append(TASK_OUT_OF_SCOPE)
+
+    # plus alle ggf. übrigen
+    rest = [c for c in out.columns if c not in ordered_cols]
+    return out[ordered_cols + rest]
+
+
+def unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    UNKNOWN Summary by Round:
+    - OUT_OF_SCOPE wird aus der Betrachtung rausgenommen (wichtig für deine Entscheidung).
+    - rows_total = total ohne OUT_OF_SCOPE
+    """
+    d = add_features(df)
+    d = d[~d["out_of_scope"]].copy()
+
+    g = d.groupby("round", dropna=False).agg(
+        rows_total=("round", "size"),
+        rows_unknown=("task_canon", lambda s: int((s == TASK_UNKNOWN).sum())),
+    )
+    g["share_unknown"] = g["rows_unknown"] / g["rows_total"].where(g["rows_total"] != 0, pd.NA)
+    return g.reset_index().sort_values("round")
+
+
+def metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Anteil nicht-null je Metrik (Round×Task) innerhalb des PRIMARY_SCOPE.
+    Erwartet i. d. R. ein in-scope Subset (z.B. DS_LATENCY als Basis).
+    """
+    d = add_features(df)
+    d = d[d["in_scope"]].copy()
+
+    if metric not in d.columns:
+        return pd.DataFrame(columns=["round", "task", "rows", "rows_with_metric", "share_metric"])
+
+    g = d.groupby(["round", "task_canon"], dropna=False).agg(
+        rows=("round", "size"),
+        rows_with_metric=(metric, lambda s: int(s.notna().sum())),
+    )
+    g["share_metric"] = g["rows_with_metric"] / g["rows"].where(g["rows"] != 0, pd.NA)
+    out = g.reset_index().rename(columns={"task_canon": "task"})
+    return out.sort_values(["round", "task"])
