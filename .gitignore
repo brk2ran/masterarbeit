@@ -9,8 +9,15 @@ __pycache__/
 # Outputs / Artefakte
 data/interim/
 data/processed/
-reports/figures/
-reports/tables/
+
+
+# ignore reports by default
+reports/
+
+# but keep EDA result tables (small, useful for reproducibility)
+!reports/tables/
+!reports/tables/**
+
 
 # OS / Editor
 .vscode/
