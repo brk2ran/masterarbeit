@@ -1,0 +1,12 @@
+{
+  "coverage_energy_by_round_task.csv": "c8764b94d4e6c01b17d8baa71ab889b28effbd5cebdee4b88ba7b8cbcfd47d2c",
+  "coverage_power_by_round_task.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_quality_by_round_task_accuracy.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_quality_by_round_task_auc.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_quality_by_round_task_quality_value.csv": "f01a374e9c81e3db89b3a42940c4d6a5447684986a1296e42bf13f196eed6295",
+  "coverage_round_task_all.csv": "9773737683d3301b8dab0357d4da2014ba2f8332362445cbdd05ce40cd208ff3",
+  "scope_summary_by_round.csv": "cf3a9322d321ce15c40f6ae3eb1ed0bf74726083677b9a454c7c67baa7572484",
+  "trend_energy_uj_round_task.csv": "dbbcc78820caea3d43603508c0c6c380235a49984e894cfa9a1593a399aa773e",
+  "trend_latency_us_round_task.csv": "bdd402433702f25836dde96b7cbd08b21a5c28a0cf80b61d26e9d60455ee7f24",
+  "unknown_summary_by_round.csv": "8ba8b326ba4853c62e818227f7362bdc07b54d5b8bafcd46f27b2e2e16337854"
+}

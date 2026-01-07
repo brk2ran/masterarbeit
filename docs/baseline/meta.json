@@ -1,0 +1,7 @@
+{
+  "note": "Baseline manifest for reproducibility checks (hash-based).",
+  "tables_dir": "C:\\Users\\Burak\\Projekte\\masterarbeit\\reports\\tables",
+  "figures_dir": "C:\\Users\\Burak\\Projekte\\masterarbeit\\reports\\figures",
+  "num_tables": 10,
+  "num_figures": 8
+}
