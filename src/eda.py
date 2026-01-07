@@ -1,5 +1,7 @@
+# src/eda.py
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -10,30 +12,20 @@ from src.features import (
     get_analysis_subsets,
     metric_coverage_by_round_task,
     round_task_counts,
+    scope_summary_by_round,
     unknown_summary_by_round,
 )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PARQUET_DEFAULT = PROJECT_ROOT / "data" / "interim" / "mlperf_tiny_raw.parquet"
-REPORTS_DIR_DEFAULT = PROJECT_ROOT / "reports"
-TABLES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "tables"
-
-
-def _ensure_dirs() -> None:
-    TABLES_DIR_DEFAULT.mkdir(parents=True, exist_ok=True)
+TABLES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "tables"
 
 
 def load_dataset(parquet_path: Path = PARQUET_DEFAULT) -> pd.DataFrame:
     if not parquet_path.exists():
         raise FileNotFoundError(f"Parquet nicht gefunden: {parquet_path}")
-    df = pd.read_parquet(parquet_path)
-
-    # Robustheit: falls jemand ein altes Parquet ohne canon-Spalten hat
-    if "task_canon" not in df.columns or "model_mlc_canon" not in df.columns:
-        df = add_features(df)
-
-    return df
+    return pd.read_parquet(parquet_path)
 
 
 def _quantile_table(
@@ -47,16 +39,19 @@ def _quantile_table(
     Robuste Deskriptiv-Tabelle je Gruppe: n, median, q25, q75, min, max.
     """
     if metric not in df.columns:
-        raise ValueError(f"Metrik '{metric}' fehlt im DataFrame.")
+        return pd.DataFrame(columns=group_cols + [
+            f"{prefix}_n", f"{prefix}_median", f"{prefix}_q25", f"{prefix}_q75",
+            f"{prefix}_min", f"{prefix}_max",
+        ])
 
     d = df[df[metric].notna()].copy()
     if d.empty:
         return pd.DataFrame(columns=group_cols + [
             f"{prefix}_n", f"{prefix}_median", f"{prefix}_q25", f"{prefix}_q75",
-            f"{prefix}_min", f"{prefix}_max"
+            f"{prefix}_min", f"{prefix}_max",
         ])
 
-    g = d.groupby(group_cols, dropna=False)[metric]
+    g = d.groupby(group_cols)[metric]
     out = pd.DataFrame({
         f"{prefix}_n": g.size(),
         f"{prefix}_median": g.median(),
@@ -69,57 +64,58 @@ def _quantile_table(
     return out.sort_values(group_cols)
 
 
-def build_core_tables(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+def build_core_tables(df_raw: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """
-    Zentrale Tabellen für die EDA/Trendbasis (PRIMARY_SCOPE only; OUT_OF_SCOPE ausgeschlossen):
-      - Coverage Round×Task (inkl. UNKNOWN, ohne OUT_OF_SCOPE)
-      - UNKNOWN Summary by Round (OUT_OF_SCOPE excluded)
-      - Metric Coverage (Energy/Power/Quality) by Round×Task
-      - Trendtable latency (Round×Task)
-      - Trendtable energy (Round×Task)
+    Baut zentrale Tabellen für EDA & Datenqualität.
+
+    Scope-Logik:
+      - OUT_OF_SCOPE (1D_DS_CNN / Streaming Wakeword) wird NICHT analysiert.
+      - UNKNOWN bleibt als Datenqualitätsindikator sichtbar.
     """
+    df = add_features(df_raw)
     subsets = get_analysis_subsets(df)
 
-    # Coverage: inkl UNKNOWN, aber OUT_OF_SCOPE ausgeschlossen
-    cov_all = round_task_counts(df, include_unknown=True, include_out_of_scope=False)
+    ds_non_oos = subsets["DS_NON_OOS"]      # IN_SCOPE + UNKNOWN
+    ds_in_scope = subsets["DS_IN_SCOPE"]    # nur AD/KWS/VWW/IC
 
-    # UNKNOWN summary (OUT_OF_SCOPE excluded in function)
-    unk_sum = unknown_summary_by_round(df)
+    # A) Scope summary
+    scope_sum = scope_summary_by_round(df)
 
-    # Coverage: Energy/Power/Quality auf task-known/in-scope Basis
-    df_task_known = subsets["DS_LATENCY"]  # in_scope + latency vorhanden (gute Basis für round×task)
-    cov_energy = metric_coverage_by_round_task(df_task_known, "energy_uj")
-    cov_power = metric_coverage_by_round_task(df_task_known, "power_mw")
-    cov_quality = metric_coverage_by_round_task(df_task_known, "accuracy")
+    # B) Coverage (Round×Task) – auf NON_OOS
+    cov_all = round_task_counts(ds_non_oos, include_unknown=True)
 
-    # Trendtables (nutze task_canon als "task" für Konsistenz)
-    d_lat = subsets["DS_LATENCY"].copy()
-    d_lat["task"] = d_lat["task_canon"]
+    # C) UNKNOWN summary – auf NON_OOS (damit OUT_OF_SCOPE separat bleibt)
+    unk_sum = unknown_summary_by_round(ds_non_oos)
 
+    # D) Metric coverage – auf IN_SCOPE
+    cov_energy = metric_coverage_by_round_task(ds_in_scope, "energy_uj")
+    cov_power = metric_coverage_by_round_task(ds_in_scope, "power_mw")
+    cov_acc = metric_coverage_by_round_task(ds_in_scope, "accuracy")
+    cov_auc = metric_coverage_by_round_task(ds_in_scope, "auc")
+
+    # E) Trendtables – auf IN_SCOPE und jeweils metric-notna
     latency_trend = _quantile_table(
-        d_lat,
+        subsets["DS_LATENCY"],
         metric="latency_us",
-        group_cols=["round", "task"],
+        group_cols=["round", "task_canon"],
         prefix="latency_us",
-    )
-
-    d_en = subsets["DS_ENERGY"].copy()
-    if not d_en.empty:
-        d_en["task"] = d_en["task_canon"]
+    ).rename(columns={"task_canon": "task"})
 
     energy_trend = _quantile_table(
-        d_en,
+        subsets["DS_ENERGY"],
         metric="energy_uj",
-        group_cols=["round", "task"],
+        group_cols=["round", "task_canon"],
         prefix="energy_uj",
-    ) if not d_en.empty else pd.DataFrame(columns=["round", "task", "energy_uj_n", "energy_uj_median", "energy_uj_q25", "energy_uj_q75", "energy_uj_min", "energy_uj_max"])
+    ).rename(columns={"task_canon": "task"})
 
     return {
+        "scope_summary_by_round": scope_sum,
         "coverage_round_task_all": cov_all,
         "unknown_summary_by_round": unk_sum,
         "coverage_energy_by_round_task": cov_energy,
         "coverage_power_by_round_task": cov_power,
-        "coverage_quality_by_round_task_accuracy": cov_quality,
+        "coverage_quality_by_round_task_accuracy": cov_acc,
+        "coverage_quality_by_round_task_auc": cov_auc,
         "trend_latency_us_round_task": latency_trend,
         "trend_energy_uj_round_task": energy_trend,
     }
@@ -139,12 +135,20 @@ def save_tables(tables: Dict[str, pd.DataFrame], out_dir: Path = TABLES_DIR_DEFA
         print(f"[table] {name}: {len(t)} rows -> {out_path}")
 
 
-def run_eda(parquet_path: Path = PARQUET_DEFAULT) -> None:
-    _ensure_dirs()
+def run_eda(parquet_path: Path = PARQUET_DEFAULT, out_dir: Path = TABLES_DIR_DEFAULT) -> None:
     df = load_dataset(parquet_path)
     tables = build_core_tables(df)
-    save_tables(tables)
+    save_tables(tables, out_dir)
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = argparse.ArgumentParser(description="EDA tables for MLPerf-Tiny (scope-aware).")
+    parser.add_argument("--parquet", type=Path, default=PARQUET_DEFAULT, help="Path to interim parquet")
+    parser.add_argument("--out-dir", type=Path, default=TABLES_DIR_DEFAULT, help="Output dir for CSV tables")
+    args = parser.parse_args(argv)
+
+    run_eda(args.parquet, args.out_dir)
 
 
 if __name__ == "__main__":
-    run_eda()
+    main()

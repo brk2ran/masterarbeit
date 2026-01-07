@@ -1,3 +1,4 @@
+# src/plots.py
 from __future__ import annotations
 
 import argparse
@@ -46,16 +47,10 @@ def _load_table(tables_dir: Path, name: str) -> pd.DataFrame:
 
 
 def _safe_set_logy(ax: plt.Axes, series_list: list[pd.Series], *, context: str) -> bool:
-    """
-    Setzt y-Achse auf log, wenn alle Werte (ohne NaN) > 0 sind.
-    """
     for s in series_list:
         if s is None or s.empty:
             continue
-        s2 = pd.to_numeric(s, errors="coerce").dropna()
-        if s2.empty:
-            continue
-        if (s2 <= 0).any():
+        if (s <= 0).any():
             print(f"WARN: logy deaktiviert ({context}) – nicht-positive Werte vorhanden.")
             return False
     ax.set_yscale("log")
@@ -85,10 +80,11 @@ def plot_latency_trend(
         raise ValueError(f"Spalten fehlen in trend_latency_us_round_task.csv: {sorted(missing)}")
 
     df = _sort_rounds(df, "round")
+
     _ensure_dir(figures_dir)
     out_path = figures_dir / filename
-
     fig, ax = plt.subplots()
+
     has_n = "latency_us_n" in df.columns
     title_suffix = f" (hollow markers: n<{min_n})" if has_n else ""
 
@@ -104,7 +100,7 @@ def plot_latency_trend(
         ax.fill_between(x, q25, q75, alpha=0.15, color=color)
 
         if has_n:
-            nvals = pd.to_numeric(d["latency_us_n"], errors="coerce").fillna(0).astype(int)
+            nvals = d["latency_us_n"].astype(int)
             mask_low = nvals < int(min_n)
             if mask_low.any():
                 ax.scatter(
@@ -125,13 +121,16 @@ def plot_latency_trend(
     if logy:
         _safe_set_logy(
             ax,
-            [df["latency_us_q25"], df["latency_us_q75"], df["latency_us_median"]],
+            [
+                df["latency_us_q25"].astype(float),
+                df["latency_us_q75"].astype(float),
+                df["latency_us_median"].astype(float),
+            ],
             context="latency_us",
         )
 
     _save_figure(fig, out_path, save_svg=save_svg)
     plt.close(fig)
-
     print(f"[figure] latency trend -> {out_path}")
     return out_path
 
@@ -152,10 +151,11 @@ def plot_energy_trend(
         raise ValueError(f"Spalten fehlen in trend_energy_uj_round_task.csv: {sorted(missing)}")
 
     df = _sort_rounds(df, "round")
+
     _ensure_dir(figures_dir)
     out_path = figures_dir / filename
-
     fig, ax = plt.subplots()
+
     has_n = "energy_uj_n" in df.columns
     title_suffix = f" (hollow markers: n<{min_n})" if has_n else ""
 
@@ -171,7 +171,7 @@ def plot_energy_trend(
         ax.fill_between(x, q25, q75, alpha=0.15, color=color)
 
         if has_n:
-            nvals = pd.to_numeric(d["energy_uj_n"], errors="coerce").fillna(0).astype(int)
+            nvals = d["energy_uj_n"].astype(int)
             mask_low = nvals < int(min_n)
             if mask_low.any():
                 ax.scatter(
@@ -192,13 +192,16 @@ def plot_energy_trend(
     if logy:
         _safe_set_logy(
             ax,
-            [df["energy_uj_q25"], df["energy_uj_q75"], df["energy_uj_median"]],
+            [
+                df["energy_uj_q25"].astype(float),
+                df["energy_uj_q75"].astype(float),
+                df["energy_uj_median"].astype(float),
+            ],
             context="energy_uj",
         )
 
     _save_figure(fig, out_path, save_svg=save_svg)
     plt.close(fig)
-
     print(f"[figure] energy trend -> {out_path}")
     return out_path
 
@@ -222,10 +225,10 @@ def plot_unknown_share_by_round(
 
     fig, ax = plt.subplots()
     x = df["round"].astype(str).tolist()
-    y = pd.to_numeric(df["share_unknown"], errors="coerce").fillna(0.0).tolist()
-
+    y = df["share_unknown"].astype(float).tolist()
     ax.bar(x, y)
-    ax.set_title("Datenqualität: Anteil UNKNOWN (task/model nicht zuordenbar)")
+
+    ax.set_title("Datenqualität: Anteil UNKNOWN (nicht zuordenbar) – ohne OUT_OF_SCOPE")
     ax.set_xlabel("Round")
     ax.set_ylabel("share_unknown")
     ax.set_ylim(0, max(0.05, max(y) * 1.1 if y else 0.05))
@@ -233,8 +236,47 @@ def plot_unknown_share_by_round(
 
     _save_figure(fig, out_path, save_svg=save_svg)
     plt.close(fig)
-
     print(f"[figure] unknown share -> {out_path}")
+    return out_path
+
+
+def plot_scope_summary_by_round(
+    tables_dir: Path,
+    figures_dir: Path,
+    *,
+    filename: str = "scope_summary_by_round.png",
+    save_svg: bool = False,
+) -> Path:
+    df = _load_table(tables_dir, "scope_summary_by_round")
+    required = {"round", "scope_status", "rows"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Spalten fehlen in scope_summary_by_round.csv: {sorted(missing)}")
+
+    df = _sort_rounds(df, "round")
+    _ensure_dir(figures_dir)
+    out_path = figures_dir / filename
+
+    # Pivot für stacked bar
+    p = df.pivot_table(index="round", columns="scope_status", values="rows", aggfunc="sum").fillna(0)
+    p = p.loc[:, [c for c in ["IN_SCOPE", "UNKNOWN", "OUT_OF_SCOPE"] if c in p.columns]]
+
+    fig, ax = plt.subplots()
+    bottom = None
+    for col in p.columns:
+        vals = p[col].astype(float).tolist()
+        ax.bar(p.index.astype(str).tolist(), vals, bottom=bottom, label=col)
+        bottom = (p[col] if bottom is None else bottom + p[col])
+
+    ax.set_title("Scope pro Round (IN_SCOPE / UNKNOWN / OUT_OF_SCOPE)")
+    ax.set_xlabel("Round")
+    ax.set_ylabel("rows")
+    ax.grid(True, which="both", axis="y", linestyle="--", linewidth=0.5)
+    ax.legend(loc="best")
+
+    _save_figure(fig, out_path, save_svg=save_svg)
+    plt.close(fig)
+    print(f"[figure] scope summary -> {out_path}")
     return out_path
 
 
@@ -242,25 +284,27 @@ def run_all(tables_dir: Path, figures_dir: Path, *, logy: bool, min_n: int, save
     plot_latency_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg)
     plot_energy_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg)
     plot_unknown_share_by_round(tables_dir, figures_dir, save_svg=save_svg)
+    plot_scope_summary_by_round(tables_dir, figures_dir, save_svg=save_svg)
 
 
 def main(argv: Optional[list[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Generate plots from reports/tables CSVs.")
-    parser.add_argument("--tables-dir", type=Path, default=TABLES_DIR_DEFAULT, help="Path to reports/tables")
-    parser.add_argument("--figures-dir", type=Path, default=FIGURES_DIR_DEFAULT, help="Path to reports/figures")
+    parser.add_argument("--tables-dir", type=Path, default=TABLES_DIR_DEFAULT)
+    parser.add_argument("--figures-dir", type=Path, default=FIGURES_DIR_DEFAULT)
 
-    parser.add_argument("--latency", action="store_true", help="Generate latency trend plot")
-    parser.add_argument("--energy", action="store_true", help="Generate energy trend plot")
-    parser.add_argument("--unknown", action="store_true", help="Generate unknown share plot")
-    parser.add_argument("--all", action="store_true", help="Generate all plots (default if no flags set)")
+    parser.add_argument("--latency", action="store_true")
+    parser.add_argument("--energy", action="store_true")
+    parser.add_argument("--unknown", action="store_true")
+    parser.add_argument("--scope", action="store_true")
+    parser.add_argument("--all", action="store_true", help="Default if no flags set")
 
-    parser.add_argument("--logy", action="store_true", help="Use logarithmic y-axis for trend plots")
-    parser.add_argument("--min-n", type=int, default=5, help="Mark points with n < MIN_N as hollow markers")
-    parser.add_argument("--svg", action="store_true", help="Also export SVG (in addition to PNG)")
+    parser.add_argument("--logy", action="store_true")
+    parser.add_argument("--min-n", type=int, default=5)
+    parser.add_argument("--svg", action="store_true")
 
     args = parser.parse_args(argv)
 
-    flags = [args.latency, args.energy, args.unknown, args.all]
+    flags = [args.latency, args.energy, args.unknown, args.scope, args.all]
     if not any(flags) or args.all:
         run_all(args.tables_dir, args.figures_dir, logy=args.logy, min_n=args.min_n, save_svg=args.svg)
         return
@@ -271,6 +315,8 @@ def main(argv: Optional[list[str]] = None) -> None:
         plot_energy_trend(args.tables_dir, args.figures_dir, logy=args.logy, min_n=args.min_n, save_svg=args.svg)
     if args.unknown:
         plot_unknown_share_by_round(args.tables_dir, args.figures_dir, save_svg=args.svg)
+    if args.scope:
+        plot_scope_summary_by_round(args.tables_dir, args.figures_dir, save_svg=args.svg)
 
 
 if __name__ == "__main__":

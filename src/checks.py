@@ -1,342 +1,185 @@
+# src/checks.py
 from __future__ import annotations
 
 import argparse
 import hashlib
-import shutil
-from dataclasses import dataclass
+import json
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Tuple
 
 import pandas as pd
 
-from src.features import add_features
+from src.features import add_features, get_analysis_subsets, round_task_counts
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PARQUET_DEFAULT = PROJECT_ROOT / "data" / "interim" / "mlperf_tiny_raw.parquet"
 TABLES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "tables"
 FIGURES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "figures"
-BASELINE_DIR_DEFAULT = PROJECT_ROOT / "docs" / "baseline_tables"
+
+BASELINE_DIR_DEFAULT = PROJECT_ROOT / "docs" / "baseline"
+BASELINE_TABLES_MANIFEST = BASELINE_DIR_DEFAULT / "tables_manifest.json"
+BASELINE_FIGURES_MANIFEST = BASELINE_DIR_DEFAULT / "figures_manifest.json"
+BASELINE_META = BASELINE_DIR_DEFAULT / "meta.json"
 
 
-# -------------------------
-# Utils
-# -------------------------
-def _md5_file(path: Path) -> str:
-    h = hashlib.md5()
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
-def _read_csv_safe(path: Path) -> pd.DataFrame:
-    # encoding="utf-8-sig" passt zu deinem Export
-    return pd.read_csv(path, encoding="utf-8-sig")
+def _manifest_for_dir(dir_path: Path, patterns: Tuple[str, ...]) -> Dict[str, str]:
+    if not dir_path.exists():
+        return {}
+    files = []
+    for pat in patterns:
+        files.extend(sorted(dir_path.glob(pat)))
+    out: Dict[str, str] = {}
+    for p in sorted(set(files)):
+        if p.is_file():
+            out[p.name] = _sha256(p)
+    return out
 
 
-def _print_section(title: str) -> None:
-    print()
-    print("=" * len(title))
-    print(title)
-    print("=" * len(title))
-
-
-def _exists_or_warn(path: Path, label: str) -> None:
-    if not path.exists():
-        print(f"WARN: {label} nicht gefunden: {path}")
-
-
-@dataclass(frozen=True)
-class TableDiff:
-    name: str
-    status: str  # "same" | "changed" | "missing_baseline" | "missing_current"
-    current_hash: str | None = None
-    baseline_hash: str | None = None
-    current_rows: int | None = None
-    baseline_rows: int | None = None
-
-
-# -------------------------
-# Core checks
-# -------------------------
-def load_parquet(parquet_path: Path) -> pd.DataFrame:
-    if not parquet_path.exists():
-        raise FileNotFoundError(f"Parquet nicht gefunden: {parquet_path}")
-    df = pd.read_parquet(parquet_path)
-
-    # Canon/Scope-Spalten ggf. ergänzen (falls altes Parquet)
-    if "task_canon" not in df.columns or "model_mlc_canon" not in df.columns:
-        df = add_features(df)
-
-    return df
-
-
-def check_scope_consistency(df: pd.DataFrame) -> None:
-    """
-    Prüft, ob OUT_OF_SCOPE nur dort vorkommt, wo du es erwartest.
-    Standardannahme nach deiner Entscheidung:
-      - OUT_OF_SCOPE == nur (model_mlc_canon == 1D_DS_CNN) in Round v1.3
-    """
-    _print_section("A) Scope-Checks (OUT_OF_SCOPE / IN_SCOPE / UNKNOWN)")
-
-    required = {"round", "public_id", "model_mlc", "model_mlc_canon", "task_canon", "out_of_scope", "in_scope"}
-    missing = required - set(df.columns)
-    if missing:
-        print(f"ERROR: Fehlende Spalten im Parquet: {sorted(missing)}")
-        return
-
-    total = len(df)
-    out_count = int(df["out_of_scope"].sum()) if "out_of_scope" in df.columns else 0
-    in_count = int(df["in_scope"].sum()) if "in_scope" in df.columns else 0
-    unk_count = int((df["task_canon"] == "UNKNOWN").sum())
-
-    print(f"Rows total: {total}")
-    print(f"Rows in_scope: {in_count} ({(in_count/total if total else 0):.3f})")
-    print(f"Rows out_of_scope: {out_count} ({(out_count/total if total else 0):.3f})")
-    print(f"Rows UNKNOWN (ohne out_of_scope): {unk_count} ({(unk_count/total if total else 0):.3f})")
-
-    # Erwartungscheck: OUT_OF_SCOPE sollte nur 1D_DS_CNN in v1.3 sein
-    out = df[df["out_of_scope"] == True].copy()  # noqa: E712
-    if out.empty:
-        print("OK: Keine OUT_OF_SCOPE-Zeilen gefunden.")
-        return
-
-    bad = out[~((out["model_mlc_canon"] == "1D_DS_CNN") & (out["round"].astype(str) == "v1.3"))]
-    if bad.empty:
-        print("OK: OUT_OF_SCOPE entspricht der Erwartung (nur 1D_DS_CNN in v1.3).")
-    else:
-        print("WARN: OUT_OF_SCOPE enthält unerwartete Fälle. Top 20:")
-        cols = ["round", "public_id", "model_mlc", "model_mlc_canon", "task_canon"]
-        print(bad[cols].head(20).to_string(index=False))
-
-
-def check_round_task_coverage(df: pd.DataFrame) -> None:
-    _print_section("B) Coverage-Checks (Round × Task)")
-
-    if "round" not in df.columns or "task_canon" not in df.columns:
-        print("ERROR: Spalten round/task_canon fehlen.")
-        return
-
-    # Coverage nur ohne OUT_OF_SCOPE
-    d = df[df.get("out_of_scope", False) == False].copy()  # noqa: E712
-
-    pivot = (
-        d.groupby(["round", "task_canon"], dropna=False)
-        .size()
-        .rename("rows")
-        .reset_index()
-        .pivot_table(index="round", columns="task_canon", values="rows", aggfunc="sum", fill_value=0)
-        .reset_index()
-    )
-    print(pivot.to_string(index=False))
-
-
-def check_missingness(df: pd.DataFrame) -> None:
-    _print_section("C) Missingness & Plausibility (in_scope)")
-
-    d = df[df.get("in_scope", False) == True].copy()  # noqa: E712
-    if d.empty:
-        print("WARN: in_scope Subset ist leer – Scope-Filter evtl. zu streng oder Daten fehlen.")
-        return
-
-    metrics = [c for c in ["latency_us", "energy_uj", "power_mw", "accuracy", "auc"] if c in d.columns]
-    if not metrics:
-        print("WARN: Keine Metrikspalten gefunden (latency_us/energy_uj/power_mw/accuracy/auc).")
-        return
-
-    miss = d[metrics].isna().mean().sort_values(ascending=False)
-    print("Missingness (Anteil NA):")
-    print(miss.to_string())
-
-    # Plausibility (sehr defensiv, nur grobe Warnungen)
-    if "latency_us" in d.columns:
-        s = pd.to_numeric(d["latency_us"], errors="coerce").dropna()
-        if not s.empty:
-            mn, md, mx = float(s.min()), float(s.median()), float(s.max())
-            print(f"\nlatency_us: min={mn:.4g}, median={md:.4g}, max={mx:.4g}")
-            if (s <= 0).any():
-                print("WARN: latency_us enthält nicht-positive Werte (sollte > 0 sein).")
-
-    if "energy_uj" in d.columns:
-        s = pd.to_numeric(d["energy_uj"], errors="coerce").dropna()
-        if not s.empty:
-            mn, md, mx = float(s.min()), float(s.median()), float(s.max())
-            print(f"energy_uj: min={mn:.4g}, median={md:.4g}, max={mx:.4g}")
-            if (s <= 0).any():
-                print("WARN: energy_uj enthält nicht-positive Werte (sollte > 0 sein).")
-
-    if "power_mw" in d.columns:
-        s = pd.to_numeric(d["power_mw"], errors="coerce").dropna()
-        if not s.empty:
-            mn, md, mx = float(s.min()), float(s.median()), float(s.max())
-            print(f"power_mw: min={mn:.4g}, median={md:.4g}, max={mx:.4g}")
-            if (s <= 0).any():
-                print("WARN: power_mw enthält nicht-positive Werte (sollte > 0 sein).")
-
-
-def check_duplicates(df: pd.DataFrame) -> None:
-    _print_section("D) Duplikat-Checks")
-
-    # Dein „Primary Key“ war zuletzt so definiert:
-    # ['public_id', 'round', 'system_name', 'host_processor_frequency', 'model_mlc']
-    key = [c for c in ["public_id", "round", "system_name", "host_processor_frequency", "model_mlc"] if c in df.columns]
-    if len(key) < 3:
-        print(f"WARN: Zu wenige Key-Spalten im Parquet für Duplikat-Check: {key}")
-        return
-
-    dup = df.duplicated(key).sum()
-    print(f"Duplicate auf KEY {key}: {int(dup)}")
-    if dup:
-        print("Top 20 Duplikate (sortiert):")
-        dups = df[df.duplicated(key, keep=False)].sort_values(key).head(20)
-        print(dups[key].to_string(index=False))
-
-
-def diff_tables(current_dir: Path, baseline_dir: Path) -> List[TableDiff]:
-    current = sorted(current_dir.glob("*.csv")) if current_dir.exists() else []
-    baseline = sorted(baseline_dir.glob("*.csv")) if baseline_dir.exists() else []
-
-    current_map = {p.name: p for p in current}
-    baseline_map = {p.name: p for p in baseline}
-    all_names = sorted(set(current_map) | set(baseline_map))
-
-    diffs: List[TableDiff] = []
-    for name in all_names:
-        c = current_map.get(name)
-        b = baseline_map.get(name)
-
-        if c is None and b is not None:
-            diffs.append(TableDiff(name=name, status="missing_current", baseline_hash=_md5_file(b)))
-            continue
-        if b is None and c is not None:
-            diffs.append(TableDiff(name=name, status="missing_baseline", current_hash=_md5_file(c)))
-            continue
-
-        assert c is not None and b is not None
-        ch, bh = _md5_file(c), _md5_file(b)
-
-        # Row counts (nur als Zusatzinfo)
-        try:
-            cr = int(len(_read_csv_safe(c)))
-        except Exception:
-            cr = None
-        try:
-            br = int(len(_read_csv_safe(b)))
-        except Exception:
-            br = None
-
-        diffs.append(
-            TableDiff(
-                name=name,
-                status="same" if ch == bh else "changed",
-                current_hash=ch,
-                baseline_hash=bh,
-                current_rows=cr,
-                baseline_rows=br,
-            )
-        )
-    return diffs
-
-
-def print_table_diffs(diffs: List[TableDiff]) -> None:
-    _print_section("E) Reports/Tables Diff (gegen Baseline)")
-
-    if not diffs:
-        print("Keine Tabellen gefunden (oder Verzeichnisse fehlen).")
-        return
-
-    changed = [d for d in diffs if d.status == "changed"]
-    missing_b = [d for d in diffs if d.status == "missing_baseline"]
-    missing_c = [d for d in diffs if d.status == "missing_current"]
-    same = [d for d in diffs if d.status == "same"]
-
-    print(f"same: {len(same)} | changed: {len(changed)} | missing_baseline: {len(missing_b)} | missing_current: {len(missing_c)}")
-
-    if changed:
-        print("\nCHANGED:")
-        for d in changed:
-            print(f"  - {d.name} (rows {d.baseline_rows} -> {d.current_rows})")
-
-    if missing_b:
-        print("\nMISSING in Baseline (neu):")
-        for d in missing_b:
-            print(f"  - {d.name}")
-
-    if missing_c:
-        print("\nMISSING in Current (evtl. gelöscht):")
-        for d in missing_c:
-            print(f"  - {d.name}")
-
-
-def update_baseline(current_dir: Path, baseline_dir: Path) -> None:
-    _print_section("F) Baseline Update")
-    if not current_dir.exists():
-        print(f"ERROR: Current tables dir fehlt: {current_dir}")
-        return
-
+def set_baseline(tables_dir: Path, figures_dir: Path, baseline_dir: Path) -> None:
     baseline_dir.mkdir(parents=True, exist_ok=True)
 
-    # Clean baseline
-    for p in baseline_dir.glob("*.csv"):
-        p.unlink()
+    tables_manifest = _manifest_for_dir(tables_dir, ("*.csv",))
+    figures_manifest = _manifest_for_dir(figures_dir, ("*.png", "*.svg"))
 
-    for p in current_dir.glob("*.csv"):
-        shutil.copy2(p, baseline_dir / p.name)
+    BASELINE_TABLES_MANIFEST.write_text(json.dumps(tables_manifest, indent=2), encoding="utf-8")
+    BASELINE_FIGURES_MANIFEST.write_text(json.dumps(figures_manifest, indent=2), encoding="utf-8")
 
-    print(f"Baseline aktualisiert: {baseline_dir}")
+    meta = {
+        "note": "Baseline manifest for reproducibility checks (hash-based).",
+        "tables_dir": str(tables_dir),
+        "figures_dir": str(figures_dir),
+        "num_tables": len(tables_manifest),
+        "num_figures": len(figures_manifest),
+    }
+    BASELINE_META.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+    print(f"Baseline gesetzt: {baseline_dir}")
+    print(f"- Tabellen: {len(tables_manifest)}")
+    print(f"- Figures:  {len(figures_manifest)}")
 
 
-def check_figures_exist(figures_dir: Path) -> None:
-    _print_section("G) Reports/Figures Präsenzcheck")
-    _exists_or_warn(figures_dir, "Figures-Verzeichnis")
-    if not figures_dir.exists():
-        return
+def diff_against_baseline(current: Dict[str, str], baseline: Dict[str, str]) -> Dict[str, list[str]]:
+    same, changed = [], []
+    for k, v in current.items():
+        if k in baseline and baseline[k] == v:
+            same.append(k)
+        elif k in baseline and baseline[k] != v:
+            changed.append(k)
+    missing_baseline = [k for k in current.keys() if k not in baseline]
+    missing_current = [k for k in baseline.keys() if k not in current]
+    return {
+        "same": sorted(same),
+        "changed": sorted(changed),
+        "missing_baseline": sorted(missing_baseline),
+        "missing_current": sorted(missing_current),
+    }
 
-    pngs = sorted(figures_dir.glob("*.png"))
-    svgs = sorted(figures_dir.glob("*.svg"))
-    print(f"PNG: {len(pngs)} | SVG: {len(svgs)}")
 
-    if pngs:
+def run_checks(parquet_path: Path, tables_dir: Path, figures_dir: Path, baseline_dir: Path) -> None:
+    print("=" * 55)
+    print("A) Scope-Checks (OUT_OF_SCOPE / IN_SCOPE / UNKNOWN)")
+    print("=" * 55)
+
+    df_raw = pd.read_parquet(parquet_path)
+    df = add_features(df_raw)
+    subsets = get_analysis_subsets(df)
+
+    total = len(df)
+    in_scope = len(subsets["DS_IN_SCOPE"])
+    out_of_scope = len(df[df["scope_status"].eq("OUT_OF_SCOPE")])
+    unknown = len(df[df["scope_status"].eq("UNKNOWN")])
+
+    print(f"Rows total: {total}")
+    print(f"Rows in_scope: {in_scope} ({in_scope/total:.3f})")
+    print(f"Rows out_of_scope: {out_of_scope} ({out_of_scope/total:.3f})")
+    print(f"Rows UNKNOWN: {unknown} ({unknown/total:.3f})")
+
+    print("\n" + "=" * 55)
+    print("B) Coverage-Checks (Round × Task) – ohne OUT_OF_SCOPE")
+    print("=" * 55)
+    cov = round_task_counts(subsets["DS_NON_OOS"], include_unknown=True)
+    piv = cov.pivot_table(index="round", columns="task", values="rows", aggfunc="sum").fillna(0).astype(int)
+    print(piv.to_string())
+
+    print("\n" + "=" * 55)
+    print("C) Missingness & Plausibility (IN_SCOPE)")
+    print("=" * 55)
+    d = subsets["DS_IN_SCOPE"].copy()
+    metrics = [c for c in ["latency_us", "energy_uj", "power_mw", "accuracy", "auc"] if c in d.columns]
+    if metrics:
+        miss = d[metrics].isna().mean().sort_values(ascending=False)
+        print("Missingness (Anteil NA):")
+        print(miss.to_string())
+        if "latency_us" in d.columns and d["latency_us"].notna().any():
+            print(f"\nlatency_us: min={d['latency_us'].min():.2f}, median={d['latency_us'].median():.2f}, max={d['latency_us'].max():.2f}")
+        if "energy_uj" in d.columns and d["energy_uj"].notna().any():
+            print(f"energy_uj: min={d['energy_uj'].min():.2f}, median={d['energy_uj'].median():.2f}, max={d['energy_uj'].max():.2f}")
+    else:
+        print("Keine Metrikspalten vorhanden.")
+
+    print("\n" + "=" * 55)
+    print("D) Duplikat-Checks")
+    print("=" * 55)
+    # key wie bisher: soweit verfügbar
+    key_candidates = ["public_id", "round", "system_name", "host_processor_frequency", "model_mlc"]
+    key = [c for c in key_candidates if c in df_raw.columns]
+    if key:
+        dups = df_raw.duplicated(key).sum()
+        print(f"Duplicate auf KEY {key}: {int(dups)}")
+    else:
+        print("Kein passender Key gefunden (Spalten fehlen).")
+
+    print("\n" + "=" * 55)
+    print("E) Reports/Tables Diff (gegen Baseline)")
+    print("=" * 55)
+    current_tables = _manifest_for_dir(tables_dir, ("*.csv",))
+    baseline_tables = json.loads(BASELINE_TABLES_MANIFEST.read_text(encoding="utf-8")) if BASELINE_TABLES_MANIFEST.exists() else {}
+    diff_t = diff_against_baseline(current_tables, baseline_tables)
+    print(f"same: {len(diff_t['same'])} | changed: {len(diff_t['changed'])} | missing_baseline: {len(diff_t['missing_baseline'])} | missing_current: {len(diff_t['missing_current'])}")
+    if diff_t["changed"]:
+        print("CHANGED:", ", ".join(diff_t["changed"]))
+    if diff_t["missing_baseline"]:
+        print("MISSING in Baseline (neu):", ", ".join(diff_t["missing_baseline"]))
+    if diff_t["missing_current"]:
+        print("MISSING in Current (weg):", ", ".join(diff_t["missing_current"]))
+
+    print("\n" + "=" * 55)
+    print("F) Reports/Figures Präsenzcheck (PNG/SVG)")
+    print("=" * 55)
+    figs = _manifest_for_dir(figures_dir, ("*.png", "*.svg"))
+    n_png = len([k for k in figs.keys() if k.lower().endswith(".png")])
+    n_svg = len([k for k in figs.keys() if k.lower().endswith(".svg")])
+    print(f"PNG: {n_png} | SVG: {n_svg}")
+    top_png = [k for k in sorted(figs.keys()) if k.lower().endswith(".png")][:10]
+    if top_png:
         print("Top PNGs:")
-        for p in pngs[:10]:
-            print(f"  - {p.name}")
+        for k in top_png:
+            print(f"- {k}")
 
 
-# -------------------------
-# CLI
-# -------------------------
-def main(argv: List[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Sanity Checks für MLPerf-Tiny EDA Pipeline.")
-    parser.add_argument("--parquet", type=Path, default=PARQUET_DEFAULT, help="Pfad zum Parquet (data/interim/...)")
-    parser.add_argument("--tables-dir", type=Path, default=TABLES_DIR_DEFAULT, help="Pfad zu reports/tables")
-    parser.add_argument("--figures-dir", type=Path, default=FIGURES_DIR_DEFAULT, help="Pfad zu reports/figures")
-
-    parser.add_argument("--baseline-dir", type=Path, default=BASELINE_DIR_DEFAULT, help="Pfad zur Baseline (CSV Snapshots)")
-    parser.add_argument(
-        "--update-baseline",
-        action="store_true",
-        help="Aktualisiert Baseline mit aktuellen reports/tables CSVs (überschreibt).",
-    )
-
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Scope-aware checks + baseline diff.")
+    parser.add_argument("--parquet", type=Path, default=PARQUET_DEFAULT)
+    parser.add_argument("--tables-dir", type=Path, default=TABLES_DIR_DEFAULT)
+    parser.add_argument("--figures-dir", type=Path, default=FIGURES_DIR_DEFAULT)
+    parser.add_argument("--baseline-dir", type=Path, default=BASELINE_DIR_DEFAULT)
+    parser.add_argument("--set-baseline", action="store_true", help="Write baseline manifests from current reports/")
     args = parser.parse_args(argv)
 
-    # Data checks
-    df = load_parquet(args.parquet)
-    check_scope_consistency(df)
-    check_round_task_coverage(df)
-    check_duplicates(df)
-    check_missingness(df)
+    if args.set_baseline:
+        set_baseline(args.tables_dir, args.figures_dir, args.baseline_dir)
+        return
 
-    # Table diff checks
-    diffs = diff_tables(args.tables_dir, args.baseline_dir)
-    print_table_diffs(diffs)
-
-    # Figure checks (nur Präsenz)
-    check_figures_exist(args.figures_dir)
-
-    if args.update_baseline:
-        update_baseline(args.tables_dir, args.baseline_dir)
+    run_checks(args.parquet, args.tables_dir, args.figures_dir, args.baseline_dir)
 
 
 if __name__ == "__main__":
