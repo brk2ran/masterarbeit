@@ -1,0 +1,29 @@
+{
+  "parquet_path": "C:/Users/Burak/Projekte/masterarbeit/data/interim/mlperf_tiny_raw.parquet",
+  "rows": 364,
+  "cols": 22,
+  "columns": [
+    "round",
+    "public_id",
+    "system_name",
+    "organization",
+    "processor",
+    "accelerator",
+    "host_processor_frequency",
+    "software",
+    "availability",
+    "benchmark",
+    "model_mlc",
+    "accuracy",
+    "auc",
+    "energy_uj",
+    "latency_us",
+    "task",
+    "model_mlc_canon",
+    "task_canon",
+    "mode_canon",
+    "out_of_scope",
+    "in_scope",
+    "power_mw"
+  ]
+}

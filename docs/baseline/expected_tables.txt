@@ -1,0 +1,9 @@
+coverage_energy_by_round_task.csv
+coverage_power_by_round_task.csv
+coverage_quality_by_round_task_accuracy.csv
+coverage_quality_by_round_task_auc.csv
+coverage_quality_by_round_task_quality_value.csv
+coverage_round_task_all.csv
+trend_energy_uj_round_task.csv
+trend_latency_us_round_task.csv
+unknown_summary_by_round.csv

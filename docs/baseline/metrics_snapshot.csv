@@ -1,0 +1,16 @@
+﻿metric,value
+rows_total,364
+rows_in_scope,341
+rows_out_of_scope,9
+rows_unknown,14
+missing_latency_us,0.0
+missing_energy_uj,0.57478
+missing_power_mw,1.0
+missing_accuracy,1.0
+missing_auc,1.0
+latency_us_min,64.9515
+latency_us_median,38580.0
+latency_us_max,1869160.0
+energy_uj_min,5.252
+energy_uj_median,1354.69
+energy_uj_max,29207.0
