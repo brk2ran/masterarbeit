@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import pandas as pd
 import matplotlib.pyplot as plt
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TABLES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "tables"
@@ -40,10 +41,7 @@ def _sort_rounds(df: pd.DataFrame, round_col: str = "round") -> pd.DataFrame:
 def _load_table(tables_dir: Path, name: str) -> pd.DataFrame:
     path = tables_dir / f"{name}.csv"
     if not path.exists():
-        raise FileNotFoundError(
-            f"Tabelle nicht gefunden: {path}\n"
-            f"Hinweis: Erzeuge zuerst die Tabellen via: python -m src.eda"
-        )
+        raise FileNotFoundError(f"Tabelle nicht gefunden: {path}")
     return pd.read_csv(path)
 
 
@@ -71,6 +69,31 @@ def _save_figure(fig: plt.Figure, out_path: Path, *, save_svg: bool) -> None:
         fig.savefig(out_path.with_suffix(".svg"))
 
 
+def _get_low_n_mask(
+    d: pd.DataFrame,
+    *,
+    low_n_col: str,
+    n_col: str,
+    min_n: int,
+) -> Tuple[pd.Series, bool]:
+    """
+    Liefert (mask_low_n, has_any_low_info).
+    Priorität:
+      1) explizite low_n Spalte (bool)
+      2) n Spalte (n < min_n)
+      3) fallback: keine Infos -> alles False
+    """
+    if low_n_col in d.columns:
+        m = d[low_n_col].astype(bool)
+        return m.fillna(False), True
+
+    if n_col in d.columns:
+        nvals = pd.to_numeric(d[n_col], errors="coerce").fillna(0).astype(int)
+        return (nvals < int(min_n)), True
+
+    return pd.Series([False] * len(d), index=d.index), False
+
+
 def plot_latency_trend(
     tables_dir: Path,
     figures_dir: Path,
@@ -78,6 +101,7 @@ def plot_latency_trend(
     filename: str = "trend_latency_us.png",
     logy: bool = False,
     min_n: int = 5,
+    hide_low_n: bool = False,
     save_svg: bool = False,
 ) -> Path:
     df = _load_table(tables_dir, "trend_latency_us_round_task")
@@ -91,27 +115,53 @@ def plot_latency_trend(
     out_path = figures_dir / filename
 
     fig, ax = plt.subplots()
-    has_n = "latency_us_n" in df.columns
-    title_suffix = f" (hollow markers: n<{min_n})" if has_n else ""
+
+    # Low-n-Info vorhanden?
+    any_low_info = ("latency_us_low_n" in df.columns) or ("latency_us_n" in df.columns)
+    title_suffix = ""
+    if any_low_info:
+        title_suffix = f" (Low-n n<{min_n} {'ausgeblendet' if hide_low_n else 'markiert'})"
 
     for task, d in df.groupby("task"):
-        x = d["round"].astype(str).tolist()
-        y = d["latency_us_median"].astype(float).tolist()
+        d = d.copy()
 
+        mask_low, has_low_info_task = _get_low_n_mask(
+            d, low_n_col="latency_us_low_n", n_col="latency_us_n", min_n=min_n
+        )
+
+        if hide_low_n and has_low_info_task:
+            d = d.loc[~mask_low].copy()
+            mask_low = pd.Series([False] * len(d), index=d.index)
+
+        if d.empty:
+            continue
+
+        x = d["round"].astype(str).tolist()
+        y = pd.to_numeric(d["latency_us_median"], errors="coerce").astype(float).tolist()
+
+        # Basislinie (standard Farben von Matplotlib)
         line = ax.plot(x, y, marker="o", label=str(task))[0]
         color = line.get_color()
 
-        q25 = d["latency_us_q25"].astype(float).tolist()
-        q75 = d["latency_us_q75"].astype(float).tolist()
+        q25 = pd.to_numeric(d["latency_us_q25"], errors="coerce").astype(float).tolist()
+        q75 = pd.to_numeric(d["latency_us_q75"], errors="coerce").astype(float).tolist()
         ax.fill_between(x, q25, q75, alpha=0.15, color=color)
 
-        if has_n:
-            nvals = pd.to_numeric(d["latency_us_n"], errors="coerce").fillna(0).astype(int)
-            mask_low = nvals < int(min_n)
-            if mask_low.any():
+        # Low-n Marker (hollow), nur wenn nicht ausgeblendet
+        if not hide_low_n and has_low_info_task:
+            # mask_low muss zum gefilterten d passen
+            if "latency_us_low_n" in d.columns:
+                mask_low2 = d["latency_us_low_n"].astype(bool).fillna(False)
+            elif "latency_us_n" in d.columns:
+                nvals = pd.to_numeric(d["latency_us_n"], errors="coerce").fillna(0).astype(int)
+                mask_low2 = nvals < int(min_n)
+            else:
+                mask_low2 = pd.Series([False] * len(d), index=d.index)
+
+            if mask_low2.any():
                 ax.scatter(
-                    d.loc[mask_low, "round"].astype(str),
-                    d.loc[mask_low, "latency_us_median"].astype(float),
+                    d.loc[mask_low2, "round"].astype(str),
+                    pd.to_numeric(d.loc[mask_low2, "latency_us_median"], errors="coerce").astype(float),
                     facecolors="none",
                     edgecolors=color,
                     linewidths=1.5,
@@ -127,7 +177,11 @@ def plot_latency_trend(
     if logy:
         _safe_set_logy(
             ax,
-            [df["latency_us_q25"], df["latency_us_q75"], df["latency_us_median"]],
+            [
+                pd.to_numeric(df["latency_us_q25"], errors="coerce"),
+                pd.to_numeric(df["latency_us_q75"], errors="coerce"),
+                pd.to_numeric(df["latency_us_median"], errors="coerce"),
+            ],
             context="latency_us",
         )
 
@@ -145,6 +199,7 @@ def plot_energy_trend(
     filename: str = "trend_energy_uj.png",
     logy: bool = False,
     min_n: int = 5,
+    hide_low_n: bool = False,
     save_svg: bool = False,
 ) -> Path:
     df = _load_table(tables_dir, "trend_energy_uj_round_task")
@@ -158,27 +213,49 @@ def plot_energy_trend(
     out_path = figures_dir / filename
 
     fig, ax = plt.subplots()
-    has_n = "energy_uj_n" in df.columns
-    title_suffix = f" (hollow markers: n<{min_n})" if has_n else ""
+
+    any_low_info = ("energy_uj_low_n" in df.columns) or ("energy_uj_n" in df.columns)
+    title_suffix = ""
+    if any_low_info:
+        title_suffix = f" (Low-n n<{min_n} {'ausgeblendet' if hide_low_n else 'markiert'})"
 
     for task, d in df.groupby("task"):
+        d = d.copy()
+
+        mask_low, has_low_info_task = _get_low_n_mask(
+            d, low_n_col="energy_uj_low_n", n_col="energy_uj_n", min_n=min_n
+        )
+
+        if hide_low_n and has_low_info_task:
+            d = d.loc[~mask_low].copy()
+            mask_low = pd.Series([False] * len(d), index=d.index)
+
+        if d.empty:
+            continue
+
         x = d["round"].astype(str).tolist()
-        y = d["energy_uj_median"].astype(float).tolist()
+        y = pd.to_numeric(d["energy_uj_median"], errors="coerce").astype(float).tolist()
 
         line = ax.plot(x, y, marker="o", label=str(task))[0]
         color = line.get_color()
 
-        q25 = d["energy_uj_q25"].astype(float).tolist()
-        q75 = d["energy_uj_q75"].astype(float).tolist()
+        q25 = pd.to_numeric(d["energy_uj_q25"], errors="coerce").astype(float).tolist()
+        q75 = pd.to_numeric(d["energy_uj_q75"], errors="coerce").astype(float).tolist()
         ax.fill_between(x, q25, q75, alpha=0.15, color=color)
 
-        if has_n:
-            nvals = pd.to_numeric(d["energy_uj_n"], errors="coerce").fillna(0).astype(int)
-            mask_low = nvals < int(min_n)
-            if mask_low.any():
+        if not hide_low_n and has_low_info_task:
+            if "energy_uj_low_n" in d.columns:
+                mask_low2 = d["energy_uj_low_n"].astype(bool).fillna(False)
+            elif "energy_uj_n" in d.columns:
+                nvals = pd.to_numeric(d["energy_uj_n"], errors="coerce").fillna(0).astype(int)
+                mask_low2 = nvals < int(min_n)
+            else:
+                mask_low2 = pd.Series([False] * len(d), index=d.index)
+
+            if mask_low2.any():
                 ax.scatter(
-                    d.loc[mask_low, "round"].astype(str),
-                    d.loc[mask_low, "energy_uj_median"].astype(float),
+                    d.loc[mask_low2, "round"].astype(str),
+                    pd.to_numeric(d.loc[mask_low2, "energy_uj_median"], errors="coerce").astype(float),
                     facecolors="none",
                     edgecolors=color,
                     linewidths=1.5,
@@ -194,7 +271,11 @@ def plot_energy_trend(
     if logy:
         _safe_set_logy(
             ax,
-            [df["energy_uj_q25"], df["energy_uj_q75"], df["energy_uj_median"]],
+            [
+                pd.to_numeric(df["energy_uj_q25"], errors="coerce"),
+                pd.to_numeric(df["energy_uj_q75"], errors="coerce"),
+                pd.to_numeric(df["energy_uj_median"], errors="coerce"),
+            ],
             context="energy_uj",
         )
 
@@ -240,19 +321,10 @@ def plot_unknown_share_by_round(
     return out_path
 
 
-def run_all(tables_dir: Path, figures_dir: Path, *, logy: bool, min_n: int, save_svg: bool) -> None:
-    # robust: einzelplots dürfen fehlen, ohne dass --all komplett abbricht
-    for fn, label in [
-        (lambda: plot_latency_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg), "latency_trend"),
-        (lambda: plot_energy_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg), "energy_trend"),
-        (lambda: plot_unknown_share_by_round(tables_dir, figures_dir, save_svg=save_svg), "unknown_share"),
-    ]:
-        try:
-            fn()
-        except FileNotFoundError as e:
-            print(f"WARN: Plot '{label}' übersprungen: {e}")
-        except Exception as e:
-            print(f"WARN: Plot '{label}' fehlgeschlagen: {e}")
+def run_all(tables_dir: Path, figures_dir: Path, *, logy: bool, min_n: int, hide_low_n: bool, save_svg: bool) -> None:
+    plot_latency_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, hide_low_n=hide_low_n, save_svg=save_svg)
+    plot_energy_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, hide_low_n=hide_low_n, save_svg=save_svg)
+    plot_unknown_share_by_round(tables_dir, figures_dir, save_svg=save_svg)
 
 
 def main(argv: Optional[list[str]] = None) -> None:
@@ -266,20 +338,42 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--all", action="store_true", help="Generate all plots (default if no flags set)")
 
     parser.add_argument("--logy", action="store_true", help="Use logarithmic y-axis for trend plots")
-    parser.add_argument("--min-n", type=int, default=5, help="Mark points with n < MIN_N as hollow markers")
+    parser.add_argument("--min-n", type=int, default=5, help="Low-n threshold (n < MIN_N)")
+    parser.add_argument("--hide-low-n", action="store_true", help="Hide low-n points instead of marking them")
     parser.add_argument("--svg", action="store_true", help="Also export SVG (in addition to PNG)")
 
     args = parser.parse_args(argv)
 
     flags = [args.latency, args.energy, args.unknown, args.all]
     if not any(flags) or args.all:
-        run_all(args.tables_dir, args.figures_dir, logy=args.logy, min_n=args.min_n, save_svg=args.svg)
+        run_all(
+            args.tables_dir,
+            args.figures_dir,
+            logy=args.logy,
+            min_n=args.min_n,
+            hide_low_n=args.hide_low_n,
+            save_svg=args.svg,
+        )
         return
 
     if args.latency:
-        plot_latency_trend(args.tables_dir, args.figures_dir, logy=args.logy, min_n=args.min_n, save_svg=args.svg)
+        plot_latency_trend(
+            args.tables_dir,
+            args.figures_dir,
+            logy=args.logy,
+            min_n=args.min_n,
+            hide_low_n=args.hide_low_n,
+            save_svg=args.svg,
+        )
     if args.energy:
-        plot_energy_trend(args.tables_dir, args.figures_dir, logy=args.logy, min_n=args.min_n, save_svg=args.svg)
+        plot_energy_trend(
+            args.tables_dir,
+            args.figures_dir,
+            logy=args.logy,
+            min_n=args.min_n,
+            hide_low_n=args.hide_low_n,
+            save_svg=args.svg,
+        )
     if args.unknown:
         plot_unknown_share_by_round(args.tables_dir, args.figures_dir, save_svg=args.svg)
 
