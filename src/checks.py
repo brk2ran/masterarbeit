@@ -30,14 +30,17 @@ BASELINE_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "baseline"
 # ---------------------------
 # Helpers: printing / formatting
 # ---------------------------
-def _hdr(title: str) -> None:
+def _heading(title: str, char: str = "=", width_min: int = 60) -> None:
     print("\n" + title)
-    print("=" * max(60, len(title)))
+    print(char * max(width_min, len(title)))
+
+
+def _hdr(title: str) -> None:
+    _heading(title, "=")
 
 
 def _sec(title: str) -> None:
-    print("\n" + title)
-    print("-" * max(60, len(title)))
+    _heading(title, "-")
 
 
 def _pct(x: float) -> str:
@@ -56,6 +59,30 @@ def _quantiles(s: pd.Series, qs=(0.0, 0.5, 1.0)) -> Dict[float, float]:
         return {q: float("nan") for q in qs}
     qv = s2.quantile(list(qs)).to_dict()
     return {float(k): float(v) for k, v in qv.items()}
+
+
+def _print_df(df: pd.DataFrame, *, verbose: bool, max_rows: int = 30, title: Optional[str] = None) -> None:
+    if title:
+        print(title)
+    if df.empty:
+        print("(empty)")
+        return
+    if verbose or len(df) <= max_rows:
+        print(df.to_string(index=False))
+    else:
+        print(df.head(max_rows).to_string(index=False))
+        print(f"... ({len(df)} rows; Details ggf. in CSV)")
+
+
+def _boolish(series: pd.Series) -> pd.Series:
+    """
+    Normalize "bool-ish" values to True/False with NaN for unparseable entries.
+    Accepted: True/False, 1/0, 'true'/'false', '1'/'0'.
+    """
+    if series.dtype == bool:
+        return series.astype("boolean")
+    s = series.astype(str).str.strip().str.lower()
+    return s.map({"true": True, "false": False, "1": True, "0": False}).astype("boolean")
 
 
 # ---------------------------
@@ -122,8 +149,8 @@ def _diff_manifests(base: Dict[str, Dict[str, object]], curr: Dict[str, Dict[str
     missing_current = sorted(base_keys - curr_keys)
     missing_baseline = sorted(curr_keys - base_keys)
 
-    same = []
-    changed = []
+    same: List[str] = []
+    changed: List[str] = []
     for k in sorted(base_keys & curr_keys):
         if base[k]["sha256"] == curr[k]["sha256"] and base[k]["bytes"] == curr[k]["bytes"]:
             same.append(k)
@@ -166,6 +193,7 @@ def _scope_checks(df: pd.DataFrame, *, verbose: bool) -> None:
     print(f"Rows out_of_scope: {out_scope} ({_pct(out_scope / total)})")
     print(f"Rows UNKNOWN (ohne out_of_scope): {unknown} ({_pct(unknown / total)})")
 
+    # UNKNOWN Ursachen kurz
     if "model_mlc_source" in df.columns:
         u = df[df["scope_status"] == "UNKNOWN"]
         if not u.empty:
@@ -174,15 +202,12 @@ def _scope_checks(df: pd.DataFrame, *, verbose: bool) -> None:
             for k, v in vc.items():
                 print(f"  - {k}: {int(v)}")
 
-    # Guard gegen "leere IN_SCOPE Kategorien" (sollte nie passieren)
+    # Gate: IN_SCOPE darf nicht ausschließlich UNKNOWN/OUT_OF_SCOPE Tasks haben
     in_scope_df = df[df["scope_status"] == "IN_SCOPE"]
     if not in_scope_df.empty:
         piv = in_scope_df.groupby(["round", "task_canon"], dropna=False).size().unstack(fill_value=0)
-        bad_rounds = []
-        for rnd in piv.index:
-            row = piv.loc[rnd]
-            if sum(int(row.get(t, 0)) for t in ["AD", "IC", "KWS", "VWW"]) == 0:
-                bad_rounds.append(str(rnd))
+        core = ["AD", "IC", "KWS", "VWW"]
+        bad_rounds = [str(rnd) for rnd in piv.index if sum(int(piv.loc[rnd].get(t, 0)) for t in core) == 0]
         if bad_rounds:
             print("\nFAIL: Rounds mit IN_SCOPE Rows, aber 0 in AD/IC/KWS/VWW (Task Mapping defekt):")
             for r in bad_rounds:
@@ -201,11 +226,10 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
     _sec("B) Coverage-Checks (Round × Task)")
 
     cov = round_task_counts(df, include_unknown=True, include_out_of_scope=True)
-    print(cov.to_string(index=False))
+    _print_df(cov, verbose=True)  # die ist klein, immer vollständig
     _write_csv(cov, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
 
     _sec("B2) Coverage-Checks (Round × Task × Model)")
-
     cov_rtm = (
         df.groupby(["round", "task_canon", "model_mlc_canon", "scope_status"], dropna=False)
         .size()
@@ -214,20 +238,16 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
     )
     _write_csv(cov_rtm, tables_dir / "coverage_round_task_model.csv", "coverage_round_task_model")
 
-    # Terminal: nur Anomalien (statt riesige Liste)
     anom = cov_rtm[
-        (cov_rtm["scope_status"] != "IN_SCOPE") | (cov_rtm["task_canon"].isin(["UNKNOWN", "OUT_OF_SCOPE"])) | (cov_rtm["model_mlc_canon"] == "UNKNOWN")
+        (cov_rtm["scope_status"] != "IN_SCOPE")
+        | (cov_rtm["task_canon"].isin(["UNKNOWN", "OUT_OF_SCOPE"]))
+        | (cov_rtm["model_mlc_canon"] == "UNKNOWN")
     ].copy()
 
     if anom.empty:
         print("OK: Keine Anomalien in Round×Task×Model (nur IN_SCOPE + kanonische Modelle).")
     else:
-        print("Anomalien (scope!=IN_SCOPE oder UNKNOWN/OUT_OF_SCOPE):")
-        # bei verbose komplett, sonst capped
-        show = anom if verbose else anom.head(30)
-        print(show.to_string(index=False))
-        if not verbose and len(anom) > 30:
-            print(f"... ({len(anom)} Anomalien total; Details in coverage_round_task_model.csv)")
+        _print_df(anom, verbose=verbose, max_rows=30, title="Anomalien (scope!=IN_SCOPE oder UNKNOWN/OUT_OF_SCOPE):")
 
     _sec("B3) Metric Coverage (auf IN_SCOPE + latency Basis)")
 
@@ -236,7 +256,6 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
     if base is None or base.empty:
         base = df[(df["scope_status"] == "IN_SCOPE") & (df.get("latency_us").notna())].copy()
 
-    # Wir schreiben weiterhin CSVs für alle Metrics, aber drucken im Terminal nur sinnvolle Zusammenfassungen.
     for metric in ["energy_uj", "power_mw", "accuracy", "auc"]:
         covm = metric_coverage_by_round_task(base, metric)
         _write_csv(covm, tables_dir / f"coverage_{metric}_by_round_task.csv", f"coverage_{metric}_by_round_task")
@@ -244,25 +263,21 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
         total_rows = int(covm["rows"].sum()) if "rows" in covm.columns else 0
         total_with = int(covm["rows_with_metric"].sum()) if "rows_with_metric" in covm.columns else 0
         share = (total_with / total_rows) if total_rows > 0 else 0.0
+        print(f"Metric: {metric} | rows_with_metric={total_with}/{total_rows} | share={share:.3f}")
 
-        # Terminal: nur eine Summary-Zeile; Detailtabelle nur wenn Coverage > 0 oder verbose
-        print(f"\nMetric: {metric} | rows_with_metric={total_with}/{total_rows} | share={share:.3f}")
-
+        # nur dann ins Terminal, wenn es überhaupt Signal gibt (oder verbose)
         if share > 0 or verbose:
-            # Optional: statt volle Tabelle nur Top/Bottom Runden zeigen
-            if not verbose:
-                top = covm.sort_values("share_metric", ascending=False).head(8)
-                print("Top share_metric:")
-                print(top.to_string(index=False))
+            if verbose:
+                _print_df(covm, verbose=True)
             else:
-                print(covm.to_string(index=False))
+                top = covm.sort_values("share_metric", ascending=False).head(8)
+                _print_df(top, verbose=True, title="Top share_metric:")
 
 
 def _unknown_summary(df: pd.DataFrame, tables_dir: Path) -> None:
     _sec("B4) UNKNOWN Summary by Round")
-
     summ = unknown_summary_by_round(df)
-    print(summ.to_string(index=False))
+    _print_df(summ, verbose=True)
     _write_csv(summ, tables_dir / "unknown_summary_by_round.csv", "unknown_summary_by_round")
 
 
@@ -285,8 +300,19 @@ def _duplicates_check(df: pd.DataFrame, *, verbose: bool) -> None:
 
     if ndup > 0 and verbose:
         sample = df.loc[dup, key].head(20)
-        print("\nBeispiel-Duplikate (Top 20):")
-        print(sample.to_string(index=False))
+        _print_df(sample, verbose=True, title="Beispiel-Duplikate (Top 20):")
+
+
+def _metric_plausibility(name: str, s: pd.Series, *, warn_max: float) -> None:
+    s = pd.to_numeric(s, errors="coerce")
+    if s.dropna().empty:
+        return
+    q = _quantiles(s, qs=(0.0, 0.5, 1.0))
+    print(f"\n{name}: min={q[0.0]:.3g}, median={q[0.5]:.3g}, max={q[1.0]:.3g}")
+    if (s <= 0).any():
+        print(f"FAIL: {name} enthält nicht-positive Werte (<=0).")
+    if q[1.0] > warn_max:
+        print(f"WARN: {name} max > {warn_max:.3g} (Ausreißer / Mapping prüfen).")
 
 
 def _missingness_plausibility(df: pd.DataFrame, *, verbose: bool) -> None:
@@ -304,33 +330,19 @@ def _missingness_plausibility(df: pd.DataFrame, *, verbose: bool) -> None:
         return
 
     miss = in_scope[cols].isna().mean().sort_values(ascending=False)
-    print("\nMissingness (Anteil NA):")
-    for k, v in miss.items():
-        print(f"{k:>12}  {v:.5f}")
+    miss_df = miss.reset_index()
+    miss_df.columns = ["metric", "share_na"]
+    _print_df(miss_df, verbose=True, title="Missingness (Anteil NA):")
 
-    # Not-NA Counts: nur für die zwei Hauptmetriken (redundanzarm)
     for main in ["latency_us", "energy_uj"]:
         if main in in_scope.columns:
-            print(f"\n{main} Not-NA: {int(in_scope[main].notna().sum())}")
+            print(f"{main} Not-NA: {int(in_scope[main].notna().sum())}")
 
-    # Plausibility (nur Hauptmetriken)
     lat = _safe_num(in_scope, "latency_us")
-    if not lat.dropna().empty:
-        q = _quantiles(lat)
-        print(f"\nlatency_us: min={q[0.0]:.3g}, median={q[0.5]:.3g}, max={q[1.0]:.3g}")
-        if (lat <= 0).any():
-            print("FAIL: latency_us enthält nicht-positive Werte (<=0).")
-        if q[1.0] > 1e8:
-            print("WARN: latency_us max > 1e8 µs (Ausreißer oder doppelte Konversion möglich).")
-
     en = _safe_num(in_scope, "energy_uj")
-    if not en.dropna().empty:
-        q = _quantiles(en)
-        print(f"\nenergy_uj: min={q[0.0]:.3g}, median={q[0.5]:.3g}, max={q[1.0]:.3g}")
-        if (en <= 0).any():
-            print("FAIL: energy_uj enthält nicht-positive Werte (<=0).")
-        if q[1.0] > 1e7:
-            print("WARN: energy_uj max > 1e7 µJ (Ausreißer möglich).")
+
+    _metric_plausibility("latency_us", lat, warn_max=1e8)
+    _metric_plausibility("energy_uj", en, warn_max=1e7)
 
     _sec("C2) Unit-Safety Heuristik (ms→µs genau einmal)")
     if not lat.dropna().empty:
@@ -352,14 +364,133 @@ def _missingness_plausibility(df: pd.DataFrame, *, verbose: bool) -> None:
         print("SKIP: latency_us hat keine Werte; Unit-Safety nicht prüfbar.")
 
     if verbose:
-        # Optional: zusätzliche Quantile nur bei verbose
         _sec("C3) Extra Quantile (verbose)")
         if not lat.dropna().empty:
-            q = _quantiles(lat, qs=(0.25, 0.5, 0.75, 0.95, 0.99))
-            print("latency_us quantiles:", q)
+            print("latency_us quantiles:", _quantiles(lat, qs=(0.25, 0.5, 0.75, 0.95, 0.99)))
         if not en.dropna().empty:
-            q = _quantiles(en, qs=(0.25, 0.5, 0.75, 0.95, 0.99))
-            print("energy_uj quantiles:", q)
+            print("energy_uj quantiles:", _quantiles(en, qs=(0.25, 0.5, 0.75, 0.95, 0.99)))
+
+
+def _trendtable_schema_gate(
+    tables_dir: Path,
+    *,
+    min_n: int,
+    strict: bool,
+    verbose: bool,
+) -> None:
+    """
+    Prüft, ob die Trendtabellen die erweiterten Spalten enthalten und plausibel sind.
+    """
+    _sec("H) Trendtable Schema Gate (q10/q90/iqr/low_n)")
+
+    checks = [
+        ("trend_latency_us_round_task.csv", "latency_us", ["round", "task"]),
+        ("trend_energy_uj_round_task.csv", "energy_uj", ["round", "task"]),
+    ]
+
+    failures: List[str] = []
+
+    for filename, prefix, key_cols in checks:
+        path = tables_dir / filename
+        if not path.exists():
+            msg = f"FEHLT: {filename} (erwarte nach python -m src.eda)"
+            print("WARN:", msg)
+            failures.append(msg)
+            continue
+
+        df = pd.read_csv(path)
+
+        expected = set(
+            key_cols
+            + [
+                f"{prefix}_n",
+                f"{prefix}_median",
+                f"{prefix}_q25",
+                f"{prefix}_q75",
+                f"{prefix}_q10",
+                f"{prefix}_q90",
+                f"{prefix}_min",
+                f"{prefix}_max",
+                f"{prefix}_iqr",
+                f"{prefix}_low_n",
+            ]
+        )
+        missing = expected - set(df.columns)
+        if missing:
+            msg = f"{filename}: Missing columns: {sorted(missing)}"
+            print("WARN:", msg)
+            failures.append(msg)
+            continue
+
+        # n numerisch?
+        n = pd.to_numeric(df[f"{prefix}_n"], errors="coerce")
+        if n.isna().any():
+            msg = f"{filename}: {prefix}_n enthält NaN / nicht-numerisch"
+            print("WARN:", msg)
+            failures.append(msg)
+
+        # low_n bool-artig?
+        low_norm = _boolish(df[f"{prefix}_low_n"])
+        if low_norm.isna().any():
+            msg = f"{filename}: {prefix}_low_n ist nicht vollständig bool-artig"
+            print("WARN:", msg)
+            failures.append(msg)
+
+        # iqr >= 0 (wenn Werte vorhanden)
+        iqr = pd.to_numeric(df[f"{prefix}_iqr"], errors="coerce")
+        iqr_bad = iqr.dropna() < -1e-12
+        if iqr_bad.any():
+            msg = f"{filename}: {prefix}_iqr hat negative Werte (min={float(iqr.min()):.3g})"
+            print("WARN:", msg)
+            failures.append(msg)
+
+        # Quantile-Ordnung: q10 ≤ q25 ≤ median ≤ q75 ≤ q90
+        q10 = pd.to_numeric(df[f"{prefix}_q10"], errors="coerce")
+        q25 = pd.to_numeric(df[f"{prefix}_q25"], errors="coerce")
+        med = pd.to_numeric(df[f"{prefix}_median"], errors="coerce")
+        q75 = pd.to_numeric(df[f"{prefix}_q75"], errors="coerce")
+        q90 = pd.to_numeric(df[f"{prefix}_q90"], errors="coerce")
+        mn = pd.to_numeric(df[f"{prefix}_min"], errors="coerce")
+        mx = pd.to_numeric(df[f"{prefix}_max"], errors="coerce")
+
+        mask_core = q10.notna() & q25.notna() & med.notna() & q75.notna() & q90.notna()
+        if mask_core.any():
+            bad_core = (q10[mask_core] > q25[mask_core]) | (q25[mask_core] > med[mask_core]) | (med[mask_core] > q75[mask_core]) | (q75[mask_core] > q90[mask_core])
+            if bad_core.any():
+                ex = df.loc[mask_core].loc[bad_core].head(5)[key_cols + [f"{prefix}_q10", f"{prefix}_q25", f"{prefix}_median", f"{prefix}_q75", f"{prefix}_q90"]]
+                msg = f"{filename}: Quantile-Reihenfolge verletzt (q10≤q25≤median≤q75≤q90). Beispiele:\n{ex.to_string(index=False)}"
+                print("WARN:", msg)
+                failures.append(f"{filename}: quantile order violated (core)")
+
+        mask_edges = mask_core & mn.notna() & mx.notna()
+        if mask_edges.any():
+            bad_edges = (mn[mask_edges] > q10[mask_edges]) | (q90[mask_edges] > mx[mask_edges])
+            if bad_edges.any():
+                ex = df.loc[mask_edges].loc[bad_edges].head(5)[key_cols + [f"{prefix}_min", f"{prefix}_q10", f"{prefix}_q90", f"{prefix}_max"]]
+                msg = f"{filename}: Randbedingungen verletzt (min≤q10 und q90≤max). Beispiele:\n{ex.to_string(index=False)}"
+                print("WARN:", msg)
+                failures.append(f"{filename}: quantile order violated (edges)")
+
+        # low_n korrekt gemäß min_n? (nur prüfen, wenn n numerisch ist und low_norm parsebar ist)
+        m = n.notna() & low_norm.notna()
+        if m.any():
+            expected_low = (n[m].fillna(0).astype(int) < int(min_n)).astype(bool).values
+            got_low = low_norm[m].astype(bool).values
+            if np.any(expected_low != got_low):
+                msg = f"{filename}: {prefix}_low_n passt nicht zu min_n={min_n} (mind. ein mismatch)"
+                print("WARN:", msg)
+                failures.append(msg)
+
+        if verbose:
+            low_share = float(low_norm.astype("float").mean(skipna=True))
+            print(f"OK: {filename} geladen | rows={len(df)} | low_n_share~{low_share:.3f}")
+
+    if failures:
+        if strict:
+            raise SystemExit(2)
+        print("\nTrendtable Schema Gate: WARNINGS (kein Abbruch, da strict=False).")
+    else:
+        print("OK: Trendtabellen enthalten erwartete erweiterten Spalten und sind plausibel.")
 
 
 def _clustering_sanity(reports_dir: Path) -> None:
@@ -457,6 +588,8 @@ def run_checks(
     freeze_baseline: bool = False,
     baseline_dir: Optional[Path] = None,
     verbose: bool = False,
+    strict_trend_schema: bool = False,
+    min_n: int = 5,
 ) -> None:
     tables_dir = reports_dir / "tables"
     figures_dir = reports_dir / "figures"
@@ -471,6 +604,7 @@ def run_checks(
     _unknown_summary(df, tables_dir=tables_dir)
     _duplicates_check(df, verbose=verbose)
     _missingness_plausibility(df, verbose=verbose)
+    _trendtable_schema_gate(tables_dir, min_n=min_n, strict=strict_trend_schema, verbose=verbose)
     _clustering_sanity(reports_dir)
 
     if freeze_baseline:
@@ -489,6 +623,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("--freeze-baseline", action="store_true", help="Freeze current reports as baseline")
     parser.add_argument("--verbose", action="store_true", help="Print full tables / extra diagnostics to console")
 
+    parser.add_argument("--min-n", type=int, default=5, help="Low-n threshold used in trend schema checks")
+    parser.add_argument("--strict-trend-schema", action="store_true", help="Exit non-zero if trend schema gate fails")
+
     args = parser.parse_args(argv)
 
     run_checks(
@@ -497,6 +634,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         freeze_baseline=args.freeze_baseline,
         baseline_dir=args.baseline_dir,
         verbose=args.verbose,
+        strict_trend_schema=args.strict_trend_schema,
+        min_n=args.min_n,
     )
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,11 +13,14 @@ TABLES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "tables"
 FIGURES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "figures"
 
 
+# ---------------------------
+# Helpers
+# ---------------------------
 def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def _parse_round_value(r: str) -> float:
+def _round_key(r: object) -> float:
     if not isinstance(r, str):
         return 1e9
     s = r.strip()
@@ -30,10 +33,10 @@ def _parse_round_value(r: str) -> float:
 
 
 def _sort_rounds(df: pd.DataFrame, round_col: str = "round") -> pd.DataFrame:
-    if round_col not in df.columns:
+    if df.empty or round_col not in df.columns:
         return df
     out = df.copy()
-    out["_round_order"] = out[round_col].astype(str).map(_parse_round_value)
+    out["_round_order"] = out[round_col].astype(str).map(_round_key)
     out = out.sort_values(["_round_order", round_col]).drop(columns=["_round_order"])
     return out
 
@@ -69,15 +72,10 @@ def _save_figure(fig: plt.Figure, out_path: Path, *, save_svg: bool) -> None:
         fig.savefig(out_path.with_suffix(".svg"))
 
 
-def _get_low_n_mask(
-    d: pd.DataFrame,
-    *,
-    low_n_col: str,
-    n_col: str,
-    min_n: int,
-) -> Tuple[pd.Series, bool]:
+def _low_n_mask(d: pd.DataFrame, *, low_n_col: str, n_col: str, min_n: int) -> tuple[pd.Series, bool]:
     """
-    Liefert (mask_low_n, has_any_low_info).
+    Liefert (mask_low_n, has_low_info).
+
     Priorität:
       1) explizite low_n Spalte (bool)
       2) n Spalte (n < min_n)
@@ -86,29 +84,35 @@ def _get_low_n_mask(
     if low_n_col in d.columns:
         m = d[low_n_col].astype(bool)
         return m.fillna(False), True
-
     if n_col in d.columns:
         nvals = pd.to_numeric(d[n_col], errors="coerce").fillna(0).astype(int)
         return (nvals < int(min_n)), True
-
     return pd.Series([False] * len(d), index=d.index), False
 
 
-def plot_latency_trend(
+# ---------------------------
+# Generic Trend Plot
+# ---------------------------
+def plot_trend_metric(
     tables_dir: Path,
     figures_dir: Path,
     *,
-    filename: str = "trend_latency_us.png",
+    table_name: str,
+    metric_prefix: str,
+    y_label: str,
+    title: str,
+    filename: str,
     logy: bool = False,
     min_n: int = 5,
     hide_low_n: bool = False,
     save_svg: bool = False,
 ) -> Path:
-    df = _load_table(tables_dir, "trend_latency_us_round_task")
-    required = {"round", "task", "latency_us_median", "latency_us_q25", "latency_us_q75"}
+    df = _load_table(tables_dir, table_name)
+
+    required = {"round", "task", f"{metric_prefix}_median", f"{metric_prefix}_q25", f"{metric_prefix}_q75"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Spalten fehlen in trend_latency_us_round_task.csv: {sorted(missing)}")
+        raise ValueError(f"Spalten fehlen in {table_name}.csv: {sorted(missing)}")
 
     df = _sort_rounds(df, "round")
     _ensure_dir(figures_dir)
@@ -117,7 +121,7 @@ def plot_latency_trend(
     fig, ax = plt.subplots()
 
     # Low-n-Info vorhanden?
-    any_low_info = ("latency_us_low_n" in df.columns) or ("latency_us_n" in df.columns)
+    any_low_info = (f"{metric_prefix}_low_n" in df.columns) or (f"{metric_prefix}_n" in df.columns)
     title_suffix = ""
     if any_low_info:
         title_suffix = f" (Low-n n<{min_n} {'ausgeblendet' if hide_low_n else 'markiert'})"
@@ -125,8 +129,8 @@ def plot_latency_trend(
     for task, d in df.groupby("task"):
         d = d.copy()
 
-        mask_low, has_low_info_task = _get_low_n_mask(
-            d, low_n_col="latency_us_low_n", n_col="latency_us_n", min_n=min_n
+        mask_low, has_low_info_task = _low_n_mask(
+            d, low_n_col=f"{metric_prefix}_low_n", n_col=f"{metric_prefix}_n", min_n=min_n
         )
 
         if hide_low_n and has_low_info_task:
@@ -137,40 +141,30 @@ def plot_latency_trend(
             continue
 
         x = d["round"].astype(str).tolist()
-        y = pd.to_numeric(d["latency_us_median"], errors="coerce").astype(float).tolist()
+        y = pd.to_numeric(d[f"{metric_prefix}_median"], errors="coerce").astype(float).tolist()
 
-        # Basislinie (standard Farben von Matplotlib)
         line = ax.plot(x, y, marker="o", label=str(task))[0]
         color = line.get_color()
 
-        q25 = pd.to_numeric(d["latency_us_q25"], errors="coerce").astype(float).tolist()
-        q75 = pd.to_numeric(d["latency_us_q75"], errors="coerce").astype(float).tolist()
+        q25 = pd.to_numeric(d[f"{metric_prefix}_q25"], errors="coerce").astype(float).tolist()
+        q75 = pd.to_numeric(d[f"{metric_prefix}_q75"], errors="coerce").astype(float).tolist()
         ax.fill_between(x, q25, q75, alpha=0.15, color=color)
 
         # Low-n Marker (hollow), nur wenn nicht ausgeblendet
         if not hide_low_n and has_low_info_task:
-            # mask_low muss zum gefilterten d passen
-            if "latency_us_low_n" in d.columns:
-                mask_low2 = d["latency_us_low_n"].astype(bool).fillna(False)
-            elif "latency_us_n" in d.columns:
-                nvals = pd.to_numeric(d["latency_us_n"], errors="coerce").fillna(0).astype(int)
-                mask_low2 = nvals < int(min_n)
-            else:
-                mask_low2 = pd.Series([False] * len(d), index=d.index)
-
-            if mask_low2.any():
+            if mask_low.any():
                 ax.scatter(
-                    d.loc[mask_low2, "round"].astype(str),
-                    pd.to_numeric(d.loc[mask_low2, "latency_us_median"], errors="coerce").astype(float),
+                    d.loc[mask_low, "round"].astype(str),
+                    pd.to_numeric(d.loc[mask_low, f"{metric_prefix}_median"], errors="coerce").astype(float),
                     facecolors="none",
                     edgecolors=color,
                     linewidths=1.5,
                     zorder=3,
                 )
 
-    ax.set_title("Trend: Latenz (Median) pro Round × Task" + title_suffix)
+    ax.set_title(title + title_suffix)
     ax.set_xlabel("Round")
-    ax.set_ylabel("latency_us (µs)")
+    ax.set_ylabel(y_label)
     ax.grid(True, which="both", axis="y", linestyle="--", linewidth=0.5)
     ax.legend(title="Task", loc="best")
 
@@ -178,18 +172,46 @@ def plot_latency_trend(
         _safe_set_logy(
             ax,
             [
-                pd.to_numeric(df["latency_us_q25"], errors="coerce"),
-                pd.to_numeric(df["latency_us_q75"], errors="coerce"),
-                pd.to_numeric(df["latency_us_median"], errors="coerce"),
+                pd.to_numeric(df[f"{metric_prefix}_q25"], errors="coerce"),
+                pd.to_numeric(df[f"{metric_prefix}_q75"], errors="coerce"),
+                pd.to_numeric(df[f"{metric_prefix}_median"], errors="coerce"),
             ],
-            context="latency_us",
+            context=metric_prefix,
         )
 
     _save_figure(fig, out_path, save_svg=save_svg)
     plt.close(fig)
 
-    print(f"[figure] latency trend -> {out_path}")
+    print(f"[figure] {metric_prefix} trend -> {out_path}")
     return out_path
+
+
+# ---------------------------
+# Specific plots (thin wrappers)
+# ---------------------------
+def plot_latency_trend(
+    tables_dir: Path,
+    figures_dir: Path,
+    *,
+    filename: str = "trend_latency_us.png",
+    logy: bool = False,
+    min_n: int = 5,
+    hide_low_n: bool = False,
+    save_svg: bool = False,
+) -> Path:
+    return plot_trend_metric(
+        tables_dir,
+        figures_dir,
+        table_name="trend_latency_us_round_task",
+        metric_prefix="latency_us",
+        y_label="latency_us (µs)",
+        title="Trend: Latenz (Median) pro Round × Task",
+        filename=filename,
+        logy=logy,
+        min_n=min_n,
+        hide_low_n=hide_low_n,
+        save_svg=save_svg,
+    )
 
 
 def plot_energy_trend(
@@ -202,88 +224,19 @@ def plot_energy_trend(
     hide_low_n: bool = False,
     save_svg: bool = False,
 ) -> Path:
-    df = _load_table(tables_dir, "trend_energy_uj_round_task")
-    required = {"round", "task", "energy_uj_median", "energy_uj_q25", "energy_uj_q75"}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"Spalten fehlen in trend_energy_uj_round_task.csv: {sorted(missing)}")
-
-    df = _sort_rounds(df, "round")
-    _ensure_dir(figures_dir)
-    out_path = figures_dir / filename
-
-    fig, ax = plt.subplots()
-
-    any_low_info = ("energy_uj_low_n" in df.columns) or ("energy_uj_n" in df.columns)
-    title_suffix = ""
-    if any_low_info:
-        title_suffix = f" (Low-n n<{min_n} {'ausgeblendet' if hide_low_n else 'markiert'})"
-
-    for task, d in df.groupby("task"):
-        d = d.copy()
-
-        mask_low, has_low_info_task = _get_low_n_mask(
-            d, low_n_col="energy_uj_low_n", n_col="energy_uj_n", min_n=min_n
-        )
-
-        if hide_low_n and has_low_info_task:
-            d = d.loc[~mask_low].copy()
-            mask_low = pd.Series([False] * len(d), index=d.index)
-
-        if d.empty:
-            continue
-
-        x = d["round"].astype(str).tolist()
-        y = pd.to_numeric(d["energy_uj_median"], errors="coerce").astype(float).tolist()
-
-        line = ax.plot(x, y, marker="o", label=str(task))[0]
-        color = line.get_color()
-
-        q25 = pd.to_numeric(d["energy_uj_q25"], errors="coerce").astype(float).tolist()
-        q75 = pd.to_numeric(d["energy_uj_q75"], errors="coerce").astype(float).tolist()
-        ax.fill_between(x, q25, q75, alpha=0.15, color=color)
-
-        if not hide_low_n and has_low_info_task:
-            if "energy_uj_low_n" in d.columns:
-                mask_low2 = d["energy_uj_low_n"].astype(bool).fillna(False)
-            elif "energy_uj_n" in d.columns:
-                nvals = pd.to_numeric(d["energy_uj_n"], errors="coerce").fillna(0).astype(int)
-                mask_low2 = nvals < int(min_n)
-            else:
-                mask_low2 = pd.Series([False] * len(d), index=d.index)
-
-            if mask_low2.any():
-                ax.scatter(
-                    d.loc[mask_low2, "round"].astype(str),
-                    pd.to_numeric(d.loc[mask_low2, "energy_uj_median"], errors="coerce").astype(float),
-                    facecolors="none",
-                    edgecolors=color,
-                    linewidths=1.5,
-                    zorder=3,
-                )
-
-    ax.set_title("Trend: Energie (Median) pro Round × Task" + title_suffix)
-    ax.set_xlabel("Round")
-    ax.set_ylabel("energy_uj (µJ)")
-    ax.grid(True, which="both", axis="y", linestyle="--", linewidth=0.5)
-    ax.legend(title="Task", loc="best")
-
-    if logy:
-        _safe_set_logy(
-            ax,
-            [
-                pd.to_numeric(df["energy_uj_q25"], errors="coerce"),
-                pd.to_numeric(df["energy_uj_q75"], errors="coerce"),
-                pd.to_numeric(df["energy_uj_median"], errors="coerce"),
-            ],
-            context="energy_uj",
-        )
-
-    _save_figure(fig, out_path, save_svg=save_svg)
-    plt.close(fig)
-
-    print(f"[figure] energy trend -> {out_path}")
-    return out_path
+    return plot_trend_metric(
+        tables_dir,
+        figures_dir,
+        table_name="trend_energy_uj_round_task",
+        metric_prefix="energy_uj",
+        y_label="energy_uj (µJ)",
+        title="Trend: Energie (Median) pro Round × Task",
+        filename=filename,
+        logy=logy,
+        min_n=min_n,
+        hide_low_n=hide_low_n,
+        save_svg=save_svg,
+    )
 
 
 def plot_unknown_share_by_round(
