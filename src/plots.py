@@ -7,7 +7,6 @@ from typing import Optional
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TABLES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "tables"
 FIGURES_DIR_DEFAULT = PROJECT_ROOT / "reports" / "figures"
@@ -41,7 +40,10 @@ def _sort_rounds(df: pd.DataFrame, round_col: str = "round") -> pd.DataFrame:
 def _load_table(tables_dir: Path, name: str) -> pd.DataFrame:
     path = tables_dir / f"{name}.csv"
     if not path.exists():
-        raise FileNotFoundError(f"Tabelle nicht gefunden: {path}")
+        raise FileNotFoundError(
+            f"Tabelle nicht gefunden: {path}\n"
+            f"Hinweis: Erzeuge zuerst die Tabellen via: python -m src.eda"
+        )
     return pd.read_csv(path)
 
 
@@ -239,9 +241,18 @@ def plot_unknown_share_by_round(
 
 
 def run_all(tables_dir: Path, figures_dir: Path, *, logy: bool, min_n: int, save_svg: bool) -> None:
-    plot_latency_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg)
-    plot_energy_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg)
-    plot_unknown_share_by_round(tables_dir, figures_dir, save_svg=save_svg)
+    # robust: einzelplots dürfen fehlen, ohne dass --all komplett abbricht
+    for fn, label in [
+        (lambda: plot_latency_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg), "latency_trend"),
+        (lambda: plot_energy_trend(tables_dir, figures_dir, logy=logy, min_n=min_n, save_svg=save_svg), "energy_trend"),
+        (lambda: plot_unknown_share_by_round(tables_dir, figures_dir, save_svg=save_svg), "unknown_share"),
+    ]:
+        try:
+            fn()
+        except FileNotFoundError as e:
+            print(f"WARN: Plot '{label}' übersprungen: {e}")
+        except Exception as e:
+            print(f"WARN: Plot '{label}' fehlgeschlagen: {e}")
 
 
 def main(argv: Optional[list[str]] = None) -> None:

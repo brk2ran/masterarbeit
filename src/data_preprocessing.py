@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import pandas as pd
 
 # Wichtig: nur für Features/Scope-Flags; hält den Scope zentral in src/features.py
 from src.features import add_features
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
@@ -17,7 +15,6 @@ INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
 DOCS_DIR = PROJECT_ROOT / "docs"
 
 PARQUET_OUT = INTERIM_DIR / "mlperf_tiny_raw.parquet"
-
 
 ROUND_FILE_PATTERN = re.compile(r"raw_(v\d+\.\d+)\.csv$", re.IGNORECASE)
 
@@ -136,15 +133,15 @@ def normalize_long(df: pd.DataFrame) -> pd.DataFrame:
     """
     d = df.copy()
 
-    # Model MLC: leere -> NULL (entspricht der "Null"-Spalte in den MLCommons Tabellen)
-    d["model_mlc"] = d["model_mlc"].where(d["model_mlc"].notna(), "NULL")
+    # Model MLC: NA oder leer/Whitespace -> NULL (entspricht "Null"-Spalte in MLCommons Tabellen)
+    d["model_mlc"] = d["model_mlc"].astype("string").str.strip()
+    d["model_mlc"] = d["model_mlc"].where(d["model_mlc"].notna() & (d["model_mlc"] != ""), pd.NA)
+    d["model_mlc"] = d["model_mlc"].fillna("NULL")
 
     parsed = d["units"].apply(_parse_metric)
     d["metric"] = parsed.apply(lambda t: t[0])
     d["metric_unit"] = parsed.apply(lambda t: t[1])
-    d["value_num"] = [
-        _convert_value(m, u, v) for m, u, v in zip(d["metric"], d["metric_unit"], d["avg_result"])
-    ]
+    d["value_num"] = [_convert_value(m, u, v) for m, u, v in zip(d["metric"], d["metric_unit"], d["avg_result"])]
 
     return d
 

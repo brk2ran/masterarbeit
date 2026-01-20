@@ -1,267 +1,268 @@
-from __future__ import annotations
-
 import re
-from typing import Dict, Iterable
+from typing import Dict
 
+import numpy as np
 import pandas as pd
 
+TASKS_IN_SCOPE = ["AD", "IC", "KWS", "VWW"]
+TASKS_ALL_ORDER = ["AD", "IC", "KWS", "VWW", "UNKNOWN", "OUT_OF_SCOPE"]
 
-# Primärer Analyse-Scope (dein Fokus)
-PRIMARY_TASKS = ("AD", "IC", "KWS", "VWW")
-
-# Interne Labels
-TASK_UNKNOWN = "UNKNOWN"
-TASK_OUT_OF_SCOPE = "OUT_OF_SCOPE"
-
-MODEL_UNKNOWN = "UNKNOWN"
-MODEL_NULL = "NULL"
-
-# Canonical Model Tokens (kompakt, stabil für Groupbys)
-MODEL_DS_CNN = "DS_CNN"
-MODEL_1D_DS_CNN = "1D_DS_CNN"
-MODEL_FC_AE = "FC_AE"
-MODEL_MOBILENETV1 = "MOBILENETV1"
-MODEL_RESNET_V1 = "RESNET_V1"
-
-MODE_UNKNOWN = "UNKNOWN"
-MODE_SINGLE_STREAM = "single_stream"
-MODE_OFFLINE = "offline"
-MODE_OUT_OF_SCOPE = "out_of_scope"
+# Benchmark darf nur als Ersatz-Model dienen, wenn es wie ein Modellstring aussieht.
+# In deinen Daten ist benchmark i.d.R. "Tiny" -> greift damit NICHT.
+MODEL_LIKE_PATTERN = re.compile(
+    r"(?:DS\s*-?\s*CNN|1D\s*-?\s*DS\s*-?\s*CNN|RESNET|MOBILENET|AUTOENCODER|FC\s+AUTOENCODER)",
+    re.IGNORECASE,
+)
 
 
-# -----------------------------
-# Canonicalization helpers
-# -----------------------------
-def _norm(s: object) -> str:
-    if s is None or (isinstance(s, float) and pd.isna(s)):
-        return ""
-    return str(s).strip()
-
-
-def canon_model_mlc(model_mlc: object) -> str:
-    """
-    Canonicalize Model MLC to a compact token.
-    Wichtig: 1D DS-CNN bleibt erkennbar (MODEL_1D_DS_CNN), wird aber später als OUT_OF_SCOPE markiert.
-    """
-    s = _norm(model_mlc)
-    if not s or s.lower() in {"null", "none", "nan", "<na>"}:
-        return MODEL_NULL
-
-    s_low = s.lower()
-
-    # 1D DS-CNN (Streaming Wakeword)
-    if "1d" in s_low and ("ds-cnn" in s_low or "ds cnn" in s_low or "ds_cnn" in s_low):
-        return MODEL_1D_DS_CNN
-
-    # DS-CNN (Keyword Spotting)
-    # Achtung: "DS-CNN" ist in MLPerf Tiny üblich als DS-CNN / DS CNN / DSCNN
-    if "ds-cnn" in s_low or "ds cnn" in s_low or re.fullmatch(r"dscnn", s_low):
-        return MODEL_DS_CNN
-
-    # FC AutoEncoder / Dense AE
-    if "autoencoder" in s_low or "fc autoencoder" in s_low or "fc_autoencoder" in s_low or "dense" == s_low:
-        return MODEL_FC_AE
-
-    # MobileNetV1
-    if "mobilenet" in s_low:
-        return MODEL_MOBILENETV1
-
-    # ResNet-V1
-    if "resnet" in s_low:
-        return MODEL_RESNET_V1
-
-    return MODEL_UNKNOWN
-
-
-def infer_task_from_model(model_canon: str) -> str:
-    """
-    Fallback: wenn Task fehlt/unklar, kann man ihn aus Model MLC ableiten (MLPerf Tiny Konvention).
-    """
-    if model_canon == MODEL_FC_AE:
-        return "AD"
-    if model_canon == MODEL_RESNET_V1:
-        return "IC"
-    if model_canon == MODEL_MOBILENETV1:
-        return "VWW"
-    if model_canon == MODEL_DS_CNN:
+def _canon_task_from_model(model_mlc_canon: str) -> str:
+    if model_mlc_canon == "DS_CNN":
         return "KWS"
-    if model_canon == MODEL_1D_DS_CNN:
-        # bewusst als out-of-scope markiert (Streaming Wakeword)
-        return TASK_OUT_OF_SCOPE
-    return TASK_UNKNOWN
+    if model_mlc_canon == "RESNET":
+        return "IC"
+    if model_mlc_canon == "MBNET":
+        return "VWW"
+    if model_mlc_canon == "FC_AE":
+        return "AD"
+    return "UNKNOWN"
 
 
-def canon_task(task: object, *, model_canon: str) -> str:
+def _canon_task_from_task_col(raw: object) -> str:
+    """Mappt eine Task-Spalte (falls vorhanden) robust auf AD/IC/KWS/VWW/UNKNOWN."""
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return "UNKNOWN"
+    s = str(raw).strip().upper()
+    task_map = {
+        "AD": "AD",
+        "ANOMALY": "AD",
+        "ANOMALY DETECTION": "AD",
+        "IC": "IC",
+        "IMAGE": "IC",
+        "IMAGE CLASSIFICATION": "IC",
+        "KWS": "KWS",
+        "KEYWORD": "KWS",
+        "KEYWORD SPOTTING": "KWS",
+        "VWW": "VWW",
+        "VISUAL WAKE WORDS": "VWW",
+    }
+    return task_map.get(s, "UNKNOWN")
+
+
+def _canon_model(raw: object) -> str:
     """
-    Canonicalize task.
-    - Wenn Model 1D_DS_CNN -> OUT_OF_SCOPE.
-    - Wenn Task fehlt, inferiere aus Model.
+    Robust kanonisieren:
+    - wenige direkte Mappings
+    - ansonsten token/regex-basiert
     """
-    if model_canon == MODEL_1D_DS_CNN:
-        return TASK_OUT_OF_SCOPE
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return "UNKNOWN"
+    s = str(raw).strip()
+    if not s:
+        return "UNKNOWN"
 
-    t = _norm(task).upper()
-    if not t or t in {"N/A", "NA", "NONE", "NAN", "<NA>"}:
-        return infer_task_from_model(model_canon)
+    u = s.upper().replace("_", " ").strip()
+    u = re.sub(r"\s+", " ", u)
 
-    # akzeptiere nur die primären Tasks
-    if t in PRIMARY_TASKS:
-        return t
+    direct = {
+        "DSCNN": "DS_CNN",
+        "DS-CNN": "DS_CNN",
+        "DS CNN": "DS_CNN",
+        "FC AUTOENCODER": "FC_AE",
+        "AUTOENCODER": "FC_AE",
+        "FC AE": "FC_AE",
+        "MOBILENET": "MBNET",
+        "MOBILENETV1": "MBNET",
+        "MOBILENET-V1": "MBNET",
+        "MOBILENET V1": "MBNET",
+        "RESNET": "RESNET",
+        "RESNET-V1": "RESNET",
+        "RESNET V1": "RESNET",
+        "RESNET_V1": "RESNET",
+        "1D-DS-CNN": "1D_DS_CNN",
+        "1D DS-CNN": "1D_DS_CNN",
+        "1D DS CNN": "1D_DS_CNN",
+        "1D DSCNN": "1D_DS_CNN",
+    }
+    if u in direct:
+        return direct[u]
 
-    # alles andere ist für deine Arbeit "nicht zuordenbar"
-    return TASK_UNKNOWN
+    # Heuristik für neue Varianten
+    if re.search(r"\b1D\b", u) and re.search(r"\bDS\b", u) and re.search(r"\bCNN\b", u):
+        return "1D_DS_CNN"
+    if re.search(r"\bDS\b", u) and re.search(r"\bCNN\b", u):
+        return "DS_CNN"
+    if "AUTO" in u and "ENC" in u:
+        return "FC_AE"
+    if "MOBILE" in u and "NET" in u:
+        return "MBNET"
+    if "RES" in u and "NET" in u:
+        return "RESNET"
+
+    return "UNKNOWN"
 
 
-def infer_mode(task_canon: str) -> str:
-    """
-    Mode ist in MLPerf Tiny nicht immer sauber im CSV; wir leiten ihn aus dem Task ab.
-    """
-    if task_canon == TASK_OUT_OF_SCOPE:
-        return MODE_OUT_OF_SCOPE
-    if task_canon == "KWS":
-        return MODE_OFFLINE
-    if task_canon in {"AD", "IC", "VWW"}:
-        return MODE_SINGLE_STREAM
-    return MODE_UNKNOWN
-
-
-# -----------------------------
-# Public API: add_features + EDA utilities
-# -----------------------------
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Adds:
-      - model_mlc_canon
-      - task_canon
-      - mode_canon
-      - out_of_scope (bool)
-      - in_scope (bool; PRIMARY_TASKS only)
+    Ergänzt kanonische Task-/Model-/Scope-Spalten.
+    OUT_OF_SCOPE (1D-DS-CNN) wird explizit überschrieben.
     """
-    d = df.copy()
+    out = df.copy()
 
-    if "model_mlc" not in d.columns:
-        d["model_mlc"] = pd.NA
-    if "task" not in d.columns:
-        d["task"] = pd.NA
+    if "model_mlc" not in out.columns:
+        out["model_mlc"] = pd.NA
 
-    d["model_mlc_canon"] = d["model_mlc"].map(canon_model_mlc)
+    model_raw = out["model_mlc"].astype("string").str.strip()
+    model_valid = model_raw.notna() & (model_raw != "") & (model_raw.str.upper() != "NULL")
 
-    d["task_canon"] = [
-        canon_task(t, model_canon=m)
-        for t, m in zip(d["task"], d["model_mlc_canon"])
-    ]
+    # Benchmark nur als Model-Ersatz zulassen, wenn es wie ein Modellstring aussieht.
+    if "benchmark" in out.columns:
+        bench_raw = out["benchmark"].astype("string").str.strip()
+        bench_valid = bench_raw.notna() & (bench_raw != "") & bench_raw.str.contains(MODEL_LIKE_PATTERN, regex=True)
+    else:
+        bench_raw = pd.Series([pd.NA] * len(out), index=out.index, dtype="string")
+        bench_valid = pd.Series([False] * len(out), index=out.index, dtype="bool")
 
-    d["mode_canon"] = d["task_canon"].map(infer_mode)
+    model_effective = model_raw.where(model_valid, bench_raw.where(bench_valid, pd.NA))
+    out["model_mlc_effective"] = model_effective
+    out["model_mlc_source"] = np.where(model_valid, "model_mlc", np.where(bench_valid, "benchmark", "missing"))
 
-    d["out_of_scope"] = d["task_canon"].eq(TASK_OUT_OF_SCOPE)
-    d["in_scope"] = d["task_canon"].isin(PRIMARY_TASKS)
+    out["model_mlc_canon"] = out["model_mlc_effective"].apply(_canon_model)
 
-    return d
+    if "task" in out.columns:
+        task_from_col = out["task"].apply(_canon_task_from_task_col)
+        out["task_canon"] = np.where(
+            task_from_col != "UNKNOWN",
+            task_from_col,
+            out["model_mlc_canon"].apply(_canon_task_from_model),
+        )
+    else:
+        out["task_canon"] = out["model_mlc_canon"].apply(_canon_task_from_model)
+
+    out["in_scope"] = out["task_canon"].isin(TASKS_IN_SCOPE)
+    out["out_of_scope"] = False
+    out["scope_status"] = np.where(out["in_scope"], "IN_SCOPE", "UNKNOWN")
+
+    # OUT_OF_SCOPE Override: 1D_DS_CNN bleibt explizit ausgeschlossen
+    is_1d = out["model_mlc_canon"].eq("1D_DS_CNN")
+    out.loc[is_1d, "in_scope"] = False
+    out.loc[is_1d, "out_of_scope"] = True
+    out.loc[is_1d, "task_canon"] = "OUT_OF_SCOPE"
+    out.loc[is_1d, "scope_status"] = "OUT_OF_SCOPE"
+
+    return out
 
 
 def get_analysis_subsets(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """
-    Liefert konsistente Subsets, die überall gleich verwendet werden.
-    OUT_OF_SCOPE ist explizit ausgeschlossen.
+    Liefert standardisierte Subsets für EDA/Checks.
+    DS_LATENCY/DS_ENERGY werden explizit bereitgestellt.
     """
-    d = add_features(df)
+    if "scope_status" not in df.columns or "task_canon" not in df.columns or "model_mlc_canon" not in df.columns:
+        df = add_features(df)
 
-    ds_base = d[d["in_scope"]].copy()
-    ds_latency = ds_base[ds_base["latency_us"].notna()].copy()
+    ds_in_scope = df[df["scope_status"].eq("IN_SCOPE")].copy()
+    ds_out_of_scope = df[df["scope_status"].eq("OUT_OF_SCOPE")].copy()
+    ds_unknown = df[df["scope_status"].eq("UNKNOWN")].copy()
+    ds_non_oos = df[~df["scope_status"].eq("OUT_OF_SCOPE")].copy()
 
-    ds_energy = ds_base[ds_base["energy_uj"].notna()].copy() if "energy_uj" in ds_base.columns else ds_base.iloc[0:0].copy()
-    ds_power = ds_base[ds_base["power_mw"].notna()].copy() if "power_mw" in ds_base.columns else ds_base.iloc[0:0].copy()
-    ds_accuracy = ds_base[ds_base["accuracy"].notna()].copy() if "accuracy" in ds_base.columns else ds_base.iloc[0:0].copy()
-    ds_auc = ds_base[ds_base["auc"].notna()].copy() if "auc" in ds_base.columns else ds_base.iloc[0:0].copy()
+    has_lat = ds_in_scope["latency_us"].notna() if "latency_us" in ds_in_scope.columns else pd.Series(False, index=ds_in_scope.index)
+    has_en = ds_in_scope["energy_uj"].notna() if "energy_uj" in ds_in_scope.columns else pd.Series(False, index=ds_in_scope.index)
 
-    ds_out = d[d["out_of_scope"]].copy()
-    ds_unknown = d[(~d["out_of_scope"]) & (d["task_canon"] == TASK_UNKNOWN)].copy()
+    ds_in_scope_le = ds_in_scope[has_lat & has_en].copy()
+    ds_latency = ds_in_scope[has_lat].copy() if "latency_us" in ds_in_scope.columns else ds_in_scope.iloc[0:0].copy()
+    ds_energy = ds_in_scope[has_en].copy() if "energy_uj" in ds_in_scope.columns else ds_in_scope.iloc[0:0].copy()
 
     return {
-        "DS_BASE": ds_base,
+        "DS_IN_SCOPE": ds_in_scope,
+        "DS_OUT_OF_SCOPE": ds_out_of_scope,
+        "DS_UNKNOWN": ds_unknown,
+        "DS_NON_OOS": ds_non_oos,
+        "DS_IN_SCOPE_LATENCY_ENERGY": ds_in_scope_le,
         "DS_LATENCY": ds_latency,
         "DS_ENERGY": ds_energy,
-        "DS_POWER": ds_power,
-        "DS_ACCURACY": ds_accuracy,
-        "DS_AUC": ds_auc,
-        "DS_OUT_OF_SCOPE": ds_out,
-        "DS_UNKNOWN": ds_unknown,
     }
 
 
-def round_task_counts(
-    df: pd.DataFrame,
-    *,
-    include_unknown: bool = True,
-    include_out_of_scope: bool = False,
-) -> pd.DataFrame:
+def sort_rounds(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    # feste Reihenfolge (falls neue Runden kommen, bleiben sie am Ende)
+    order = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
+    if col in df.columns:
+        df[col] = pd.Categorical(df[col], categories=order, ordered=True)
+    return df
+
+
+def round_task_counts(df: pd.DataFrame, *, include_unknown: bool = True, include_out_of_scope: bool = True) -> pd.DataFrame:
     """
-    Coverage Round×Task (Zeilenanzahl) als Pivot.
-    Default: UNKNOWN drin, OUT_OF_SCOPE raus.
+    Counts pro Round×Task im Wide-Format.
+    Rückgabe wird mit index=False gespeichert (Round ist daher eine normale Spalte).
     """
-    d = add_features(df)
+    if "round" not in df.columns or "task_canon" not in df.columns:
+        raise ValueError("Spalten 'round' und/oder 'task_canon' fehlen.")
 
-    if not include_out_of_scope:
-        d = d[~d["out_of_scope"]].copy()
+    d = df.copy()
 
-    if not include_unknown:
-        d = d[d["task_canon"] != TASK_UNKNOWN].copy()
+    allowed = TASKS_IN_SCOPE.copy()
+    if include_unknown:
+        allowed.append("UNKNOWN")
+    if include_out_of_scope:
+        allowed.append("OUT_OF_SCOPE")
 
-    g = (
-        d.groupby(["round", "task_canon"], dropna=False)
-        .size()
-        .rename("rows")
-        .reset_index()
-    )
+    d = d[d["task_canon"].isin(allowed)]
+    piv = d.groupby(["round", "task_canon"], dropna=False).size().unstack(fill_value=0)
 
-    # Pivot für schnell lesbare Coverage-Übersicht
-    out = g.pivot_table(index="round", columns="task_canon", values="rows", aggfunc="sum", fill_value=0)
-    out = out.reset_index()
+    # Spalten vollständig/geordnet
+    ordered_cols = [c for c in TASKS_ALL_ORDER if c in piv.columns]
+    piv = piv.reindex(columns=ordered_cols, fill_value=0)
 
-    # stabile Spaltenreihenfolge
-    ordered_cols = ["round"] + [t for t in PRIMARY_TASKS if t in out.columns]
-    if include_unknown and TASK_UNKNOWN in out.columns:
-        ordered_cols.append(TASK_UNKNOWN)
-    if include_out_of_scope and TASK_OUT_OF_SCOPE in out.columns:
-        ordered_cols.append(TASK_OUT_OF_SCOPE)
-
-    # plus alle ggf. übrigen
-    rest = [c for c in out.columns if c not in ordered_cols]
-    return out[ordered_cols + rest]
-
-
-def unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    UNKNOWN Summary by Round:
-    - OUT_OF_SCOPE wird aus der Betrachtung rausgenommen (wichtig für deine Entscheidung).
-    - rows_total = total ohne OUT_OF_SCOPE
-    """
-    d = add_features(df)
-    d = d[~d["out_of_scope"]].copy()
-
-    g = d.groupby("round", dropna=False).agg(
-        rows_total=("round", "size"),
-        rows_unknown=("task_canon", lambda s: int((s == TASK_UNKNOWN).sum())),
-    )
-    g["share_unknown"] = g["rows_unknown"] / g["rows_total"].where(g["rows_total"] != 0, pd.NA)
-    return g.reset_index().sort_values("round")
+    out = piv.reset_index().rename_axis(None, axis=1)
+    out = sort_rounds(out, "round")
+    return out.sort_values("round")
 
 
 def metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """
-    Anteil nicht-null je Metrik (Round×Task) innerhalb des PRIMARY_SCOPE.
-    Erwartet i. d. R. ein in-scope Subset (z.B. DS_LATENCY als Basis).
+    Für jede Round×Task-Gruppe:
+      - rows: Anzahl Zeilen
+      - rows_with_metric: Anzahl nicht-NA für metric
+      - share_metric: Anteil mit metric
     """
-    d = add_features(df)
-    d = d[d["in_scope"]].copy()
+    if "round" not in df.columns or "task_canon" not in df.columns:
+        raise ValueError("Spalten 'round' und/oder 'task_canon' fehlen.")
 
-    if metric not in d.columns:
-        return pd.DataFrame(columns=["round", "task", "rows", "rows_with_metric", "share_metric"])
+    if metric not in df.columns:
+        out = (
+            df.groupby(["round", "task_canon"], dropna=False)
+            .size()
+            .reset_index(name="rows")
+            .rename(columns={"task_canon": "task"})
+        )
+        out["rows_with_metric"] = 0
+        out["share_metric"] = 0.0
+        out = sort_rounds(out, "round")
+        return out.sort_values(["round", "task"])
 
-    g = d.groupby(["round", "task_canon"], dropna=False).agg(
-        rows=("round", "size"),
-        rows_with_metric=(metric, lambda s: int(s.notna().sum())),
-    )
-    g["share_metric"] = g["rows_with_metric"] / g["rows"].where(g["rows"] != 0, pd.NA)
-    out = g.reset_index().rename(columns={"task_canon": "task"})
+    grp = df.groupby(["round", "task_canon"], dropna=False)
+    out = grp.size().reset_index(name="rows")
+    out["rows_with_metric"] = grp[metric].apply(lambda s: int(s.notna().sum())).values
+    out["share_metric"] = np.where(out["rows"] > 0, out["rows_with_metric"] / out["rows"], 0.0)
+    out = out.rename(columns={"task_canon": "task"})
+    out = sort_rounds(out, "round")
     return out.sort_values(["round", "task"])
+
+
+def unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Pro Round:
+      - rows_total
+      - rows_unknown
+      - share_unknown
+    """
+    if "round" not in df.columns or "scope_status" not in df.columns:
+        raise ValueError("Spalten 'round' und/oder 'scope_status' fehlen.")
+
+    grp = df.groupby("round", dropna=False)
+    out = grp.size().reset_index(name="rows_total")
+    out["rows_unknown"] = grp["scope_status"].apply(lambda s: int((s == "UNKNOWN").sum())).values
+    out["share_unknown"] = np.where(out["rows_total"] > 0, out["rows_unknown"] / out["rows_total"], 0.0)
+    out = sort_rounds(out, "round")
+    return out.sort_values(["round"])
