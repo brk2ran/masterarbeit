@@ -1,238 +1,281 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Dict, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
-from src.features import (
-    add_features,
-    get_analysis_subsets,
-    metric_coverage_by_round_task,
-    round_task_counts,
-    unknown_summary_by_round,
-)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PARQUET_DEFAULT = PROJECT_ROOT / "data" / "interim" / "mlperf_tiny_raw.parquet"
-REPORTS_DIR_DEFAULT = PROJECT_ROOT / "reports"
-TABLES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "tables"
+ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
+CORE_TASKS = ["AD", "IC", "KWS", "VWW"]
 
-MIN_N_DEFAULT = 5  # Low-n: n < MIN_N_DEFAULT
+# Option A: Baseline-Kandidaten erst ab dieser Round zulassen
+MIN_BASELINE_ROUND = "v0.7"
 
 
-# ---------------------------
-# Round sorting (v0.5, v1.0, ...)
-# ---------------------------
-def _round_key(r: object) -> float:
-    if not isinstance(r, str):
-        return 1e9
-    s = r.strip()
-    if s.startswith("v"):
-        s = s[1:]
+def _round_rank(r: str) -> int:
     try:
-        return float(s)
+        return ROUND_ORDER.index(str(r))
     except ValueError:
-        return 1e9
+        return 10_000
 
 
-def _sort_rounds(df: pd.DataFrame, round_col: str = "round") -> pd.DataFrame:
-    if df.empty or round_col not in df.columns:
-        return df
-    out = df.copy()
-    out["_round_order"] = out[round_col].astype(str).map(_round_key)
-    out = out.sort_values(["_round_order", round_col]).drop(columns=["_round_order"])
-    return out
+def _ensure_dirs(*paths: Path) -> None:
+    for p in paths:
+        p.mkdir(parents=True, exist_ok=True)
 
 
-# ---------------------------
-# Load dataset
-# ---------------------------
-def load_dataset(parquet_path: Path = PARQUET_DEFAULT) -> pd.DataFrame:
-    if not parquet_path.exists():
-        raise FileNotFoundError(f"Parquet nicht gefunden: {parquet_path}")
-    df = pd.read_parquet(parquet_path)
-
-    # Robustheit: falls altes Parquet ohne canon-Spalten vorliegt
-    if "task_canon" not in df.columns or "model_mlc_canon" not in df.columns or "scope_status" not in df.columns:
-        df = add_features(df)
-
-    return df
-
-
-# ---------------------------
-# Trend tables
-# ---------------------------
-def _quantile_table(
-    df: pd.DataFrame,
-    metric: str,
-    group_cols: list[str],
-    *,
-    prefix: str,
-    min_n: int,
-) -> pd.DataFrame:
+def _task_label(row: pd.Series) -> str:
     """
-    Liefert je Gruppe:
-      n, median, q25, q75, q10, q90, min, max, iqr, low_n
+    Label-Regel für Coverage:
+    - OUT_OF_SCOPE bleibt OUT_OF_SCOPE (als eigene Kategorie)
+    - fehlende / unbekannte Tasks -> UNKNOWN
+    - sonst task_canon (AD/IC/KWS/VWW)
     """
-    cols = group_cols + [
-        f"{prefix}_n",
-        f"{prefix}_median",
-        f"{prefix}_q25",
-        f"{prefix}_q75",
-        f"{prefix}_q10",
-        f"{prefix}_q90",
-        f"{prefix}_min",
-        f"{prefix}_max",
-        f"{prefix}_iqr",
-        f"{prefix}_low_n",
-    ]
+    scope_status = row.get("scope_status", None)
+    task_canon = row.get("task_canon", None)
 
-    if metric not in df.columns:
-        raise ValueError(f"Metrik '{metric}' fehlt im DataFrame.")
+    if pd.notna(scope_status) and str(scope_status) == "OUT_OF_SCOPE":
+        return "OUT_OF_SCOPE"
 
-    d = df[df[metric].notna()].copy()
-    if d.empty:
-        return pd.DataFrame(columns=cols)
+    if pd.isna(task_canon) or str(task_canon).strip() == "" or str(task_canon) == "UNKNOWN":
+        return "UNKNOWN"
 
-    g = d.groupby(group_cols, dropna=False)[metric]
-    out = pd.DataFrame(
-        {
-            f"{prefix}_n": g.size(),
-            f"{prefix}_median": g.median(),
-            f"{prefix}_q25": g.quantile(0.25),
-            f"{prefix}_q75": g.quantile(0.75),
-            f"{prefix}_q10": g.quantile(0.10),
-            f"{prefix}_q90": g.quantile(0.90),
-            f"{prefix}_min": g.min(),
-            f"{prefix}_max": g.max(),
-        }
+    return str(task_canon)
+
+
+def _write_table(df: pd.DataFrame, out_path: Path, tag: str) -> None:
+    df.to_csv(out_path, index=False)
+    print(f"[table] {tag}: {len(df)} rows -> {out_path}")
+
+
+def _coverage_round_task_all(df: pd.DataFrame) -> pd.DataFrame:
+    tmp = df.copy()
+    tmp["task_label"] = tmp.apply(_task_label, axis=1)
+
+    g = tmp.groupby(["round", "task_label"], dropna=False).size().reset_index(name="rows")
+
+    pivot = (
+        g.pivot_table(index="round", columns="task_label", values="rows", fill_value=0, aggfunc="sum")
+        .reset_index()
+    )
+
+    for c in CORE_TASKS + ["UNKNOWN", "OUT_OF_SCOPE"]:
+        if c not in pivot.columns:
+            pivot[c] = 0
+
+    pivot = pivot[["round"] + CORE_TASKS + ["UNKNOWN", "OUT_OF_SCOPE"]]
+    pivot["round_rank"] = pivot["round"].map(_round_rank)
+    pivot = pivot.sort_values("round_rank").drop(columns=["round_rank"]).reset_index(drop=True)
+    return pivot
+
+
+def _unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
+    tmp = df.copy()
+    tmp["is_unknown"] = tmp["scope_status"].eq("UNKNOWN") if "scope_status" in tmp.columns else False
+
+    g = tmp.groupby("round").agg(
+        rows_total=("round", "size"),
+        rows_unknown=("is_unknown", "sum"),
     ).reset_index()
 
-    out[f"{prefix}_iqr"] = out[f"{prefix}_q75"] - out[f"{prefix}_q25"]
-    out[f"{prefix}_low_n"] = out[f"{prefix}_n"].astype(int) < int(min_n)
+    g["share_unknown"] = np.where(g["rows_total"] > 0, g["rows_unknown"] / g["rows_total"], np.nan)
+    g["round_rank"] = g["round"].map(_round_rank)
+    g = g.sort_values("round_rank").drop(columns=["round_rank"]).reset_index(drop=True)
+    return g
 
-    return _sort_rounds(out[group_cols + [c for c in out.columns if c not in group_cols]], round_col="round")
 
-
-def _index_trend_table(
-    trend_df: pd.DataFrame,
-    *,
-    metric_prefix: str,
-    task_col: str = "task",
-    round_col: str = "round",
-) -> pd.DataFrame:
+def _metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """
-    Indexierung je task:
-      index = value / baseline_median
-    baseline = früheste Round mit median > 0
+    Coverage je Round×Task_label (inkl. UNKNOWN/OUT_OF_SCOPE als Kategorien).
     """
-    if trend_df.empty:
-        return trend_df.copy()
+    tmp = df.copy()
+    tmp["task_label"] = tmp.apply(_task_label, axis=1)
 
-    required = {round_col, task_col, f"{metric_prefix}_median", f"{metric_prefix}_n"}
-    missing = required - set(trend_df.columns)
-    if missing:
-        raise ValueError(f"Indexierung nicht möglich, Spalten fehlen: {sorted(missing)}")
+    if metric not in tmp.columns:
+        tmp["_has_metric"] = False
+    else:
+        tmp["_has_metric"] = tmp[metric].notna()
 
-    df = _sort_rounds(trend_df, round_col=round_col).copy()
+    g = tmp.groupby(["round", "task_label"]).agg(
+        rows=("task_label", "size"),
+        rows_with_metric=("_has_metric", "sum"),
+    ).reset_index()
 
-    # Baseline pro Task: erste Round mit median > 0
-    baselines = []
-    for task, d in df.groupby(task_col, dropna=False):
-        med = pd.to_numeric(d[f"{metric_prefix}_median"], errors="coerce")
-        valid = med.notna() & (med > 0)
-        if not valid.any():
-            baselines.append({task_col: task, "baseline_round": pd.NA, "baseline_n": pd.NA, "baseline_median": pd.NA})
-            continue
-        first = d.loc[valid].iloc[0]
-        baselines.append(
-            {
-                task_col: task,
-                "baseline_round": first[round_col],
-                "baseline_n": int(first[f"{metric_prefix}_n"]),
-                "baseline_median": float(first[f"{metric_prefix}_median"]),
-            }
-        )
+    g["share_metric"] = np.where(g["rows"] > 0, g["rows_with_metric"] / g["rows"], np.nan)
+    g["round_rank"] = g["round"].map(_round_rank)
+    g = g.sort_values(["round_rank", "task_label"]).drop(columns=["round_rank"]).reset_index(drop=True)
+    return g
 
-    out = df.merge(pd.DataFrame(baselines), on=task_col, how="left")
-    denom = pd.to_numeric(out["baseline_median"], errors="coerce")
 
-    def _div(col: str) -> pd.Series:
-        return pd.to_numeric(out[col], errors="coerce") / denom
+def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
+    """
+    Trendtabellen nur für IN_SCOPE + CORE_TASKS.
+    """
+    tmp = df.copy()
 
-    for base in ["median", "q25", "q75", "q10", "q90"]:
-        col = f"{metric_prefix}_{base}"
-        if col in out.columns:
-            out[f"{metric_prefix}_{base}_index"] = _div(col)
+    tmp = tmp[
+        (tmp["scope_status"] == "IN_SCOPE")
+        & (tmp["task_canon"].isin(CORE_TASKS))
+        & (tmp[metric].notna())
+    ].copy()
 
+    def q(x: pd.Series, p: float) -> float:
+        return float(np.quantile(x.to_numpy(), p))
+
+    g = tmp.groupby(["round", "task_canon"])[metric].agg(
+        n="count",
+        median="median",
+        q10=lambda x: q(x, 0.10),
+        q25=lambda x: q(x, 0.25),
+        q75=lambda x: q(x, 0.75),
+        q90=lambda x: q(x, 0.90),
+        min="min",
+        max="max",
+    ).reset_index()
+
+    g["iqr"] = g["q75"] - g["q25"]
+    g["low_n"] = g["n"] < int(min_n)
+
+    g["round_rank"] = g["round"].map(_round_rank)
+    g["task_rank"] = g["task_canon"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    g = g.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+
+    g = g.rename(
+        columns={
+            "task_canon": "task",
+            "n": f"{metric}_n",
+            "median": f"{metric}_median",
+            "q10": f"{metric}_q10",
+            "q25": f"{metric}_q25",
+            "q75": f"{metric}_q75",
+            "q90": f"{metric}_q90",
+            "min": f"{metric}_min",
+            "max": f"{metric}_max",
+            "iqr": f"{metric}_iqr",
+            "low_n": f"{metric}_low_n",
+        }
+    )
+    return g
+
+
+def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
+    """
+    Option A: Baseline-Kandidaten erst ab MIN_BASELINE_ROUND zulassen.
+
+    Baseline pro Metrik×Task:
+      - erste Round (nach ROUND_ORDER) mit n>=min_n und median vorhanden
+      - ABER nur für Rounds mit round_rank >= round_rank(MIN_BASELINE_ROUND)
+
+    Pre-Baseline wird in Index-Spalten ausgeblendet (NaN), damit Plots/Checks nicht irritieren.
+    """
+    n_col = f"{metric}_n"
+    med_col = f"{metric}_median"
+
+    min_base_rank = _round_rank(MIN_BASELINE_ROUND)
+
+    baseline_map: Dict[str, Tuple[Optional[str], Optional[int], Optional[float]]] = {}
+
+    for task, g in trend.groupby("task", sort=False):
+        g2 = g.copy()
+        g2["round_rank"] = g2["round"].map(_round_rank)
+        g2 = g2.sort_values("round_rank")
+
+        # Option A: Baseline-Kandidaten ab MIN_BASELINE_ROUND
+        base_row = g2[
+            (g2["round_rank"] >= min_base_rank)
+            & (g2[n_col] >= int(min_n))
+            & (g2[med_col].notna())
+        ].head(1)
+
+        if len(base_row) == 0:
+            baseline_map[task] = (None, None, None)
+        else:
+            r0 = str(base_row["round"].iloc[0])
+            n0 = int(base_row[n_col].iloc[0])
+            m0 = float(base_row[med_col].iloc[0])
+            baseline_map[task] = (r0, n0, m0)
+
+    out = trend.copy()
+    out["baseline_round"] = out["task"].map(lambda t: baseline_map.get(t, (None, None, None))[0])
+    out["baseline_n"] = out["task"].map(lambda t: baseline_map.get(t, (None, None, None))[1])
+    out["baseline_median"] = out["task"].map(lambda t: baseline_map.get(t, (None, None, None))[2])
+
+    def safe_div(a: pd.Series, b: pd.Series) -> pd.Series:
+        a = pd.to_numeric(a, errors="coerce")
+        b = pd.to_numeric(b, errors="coerce")
+        return np.where((b.notna()) & (b != 0), a / b, np.nan)
+
+    out[f"{metric}_median_index"] = safe_div(out[med_col], out["baseline_median"])
+    out[f"{metric}_q25_index"] = safe_div(out[f"{metric}_q25"], out["baseline_median"])
+    out[f"{metric}_q75_index"] = safe_div(out[f"{metric}_q75"], out["baseline_median"])
+    out[f"{metric}_q10_index"] = safe_div(out[f"{metric}_q10"], out["baseline_median"])
+    out[f"{metric}_q90_index"] = safe_div(out[f"{metric}_q90"], out["baseline_median"])
+
+    # Pre-Baseline ausblenden: round < baseline_round => Index-Spalten = NaN
+    out["round_rank"] = out["round"].map(_round_rank)
+    base_rank = out["baseline_round"].map(lambda r: _round_rank(r) if isinstance(r, str) else np.nan)
+
+    out["pre_baseline"] = np.where(base_rank.notna() & (out["round_rank"] < base_rank), True, False)
+
+    idx_cols = [
+        f"{metric}_median_index",
+        f"{metric}_q25_index",
+        f"{metric}_q75_index",
+        f"{metric}_q10_index",
+        f"{metric}_q90_index",
+    ]
+    out.loc[out["pre_baseline"] == True, idx_cols] = np.nan
+
+    out = out.drop(columns=["round_rank"])
     return out
 
 
-# ---------------------------
-# Core tables
-# ---------------------------
-def build_core_tables(df: pd.DataFrame, *, min_n: int = MIN_N_DEFAULT) -> Dict[str, pd.DataFrame]:
-    """
-    Zentrale Tabellen:
-      - coverage_round_task_all (UNKNOWN inkl., OUT_OF_SCOPE exkl.)
-      - unknown_summary_by_round
-      - coverage_{metric}_by_round_task (energy_uj, power_mw, accuracy)
-      - trend_latency_us_round_task (+ indexed)
-      - trend_energy_uj_round_task (+ indexed)
-    """
-    subsets = get_analysis_subsets(df)
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", default="data/interim/mlperf_tiny_raw.parquet", help="Input parquet")
+    ap.add_argument("--tables-dir", default="reports/tables", help="Output directory for tables")
+    ap.add_argument("--min-n", type=int, default=5, help="Minimum n for 'stable' statistics / baseline selection")
+    args = ap.parse_args()
 
-    cov_all = round_task_counts(df, include_unknown=True, include_out_of_scope=False)
-    unk_sum = unknown_summary_by_round(df)
+    data_path = Path(args.data)
+    tables_dir = Path(args.tables_dir)
+    _ensure_dirs(tables_dir)
 
-    # Base für Metric Coverage: IN_SCOPE + latency vorhanden
-    base = subsets.get("DS_LATENCY", pd.DataFrame()).copy()
+    df = pd.read_parquet(data_path)
 
-    coverage_tables = {}
-    for metric in ["energy_uj", "power_mw", "accuracy"]:
-        coverage_tables[f"coverage_{metric}_by_round_task"] = metric_coverage_by_round_task(base, metric)
+    # A) Coverage & Data quality
+    cov_all = _coverage_round_task_all(df)
+    _write_table(cov_all, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
 
-    # Trendtables: task_canon -> task
-    d_lat = base.copy()
-    d_lat["task"] = d_lat["task_canon"]
-    latency_trend = _quantile_table(d_lat, "latency_us", ["round", "task"], prefix="latency_us", min_n=min_n)
+    unk = _unknown_summary_by_round(df)
+    _write_table(unk, tables_dir / "unknown_summary_by_round.csv", "unknown_summary_by_round")
 
-    d_en = subsets.get("DS_ENERGY", pd.DataFrame()).copy()
-    d_en["task"] = d_en["task_canon"] if not d_en.empty else pd.Series(dtype="object")
-    energy_trend = _quantile_table(d_en, "energy_uj", ["round", "task"], prefix="energy_uj", min_n=min_n)
+    # B) Metric coverage (inkl. UNKNOWN/OUT_OF_SCOPE)
+    #    (Accuracy nur EINMAL: coverage_accuracy_by_round_task.csv)
+    metrics_general = ["energy_uj", "power_mw", "auc"]
+    for metric in metrics_general:
+        cov = _metric_coverage_by_round_task(df, metric=metric)
+        _write_table(cov, tables_dir / f"coverage_{metric}_by_round_task.csv", f"coverage_{metric}_by_round_task")
 
-    return {
-        "coverage_round_task_all": cov_all,
-        "unknown_summary_by_round": unk_sum,
-        **coverage_tables,
-        "coverage_quality_by_round_task_accuracy": coverage_tables["coverage_accuracy_by_round_task"],
-        "trend_latency_us_round_task": latency_trend,
-        "trend_energy_uj_round_task": energy_trend,
-        "trend_latency_us_round_task_indexed": _index_trend_table(latency_trend, metric_prefix="latency_us"),
-        "trend_energy_uj_round_task_indexed": _index_trend_table(energy_trend, metric_prefix="energy_uj"),
-    }
+    cov_acc = _metric_coverage_by_round_task(df, metric="accuracy")
+    _write_table(cov_acc, tables_dir / "coverage_accuracy_by_round_task.csv", "coverage_accuracy_by_round_task")
 
+    # C) Trendtabellen + Index
+    min_n = int(args.min_n)
 
-def save_tables(tables: Dict[str, pd.DataFrame], out_dir: Path = TABLES_DIR_DEFAULT) -> None:
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    for name, t in tables.items():
-        out_path = out_dir / f"{name}.csv"
-        if t is None or t.empty:
-            pd.DataFrame().to_csv(out_path, index=False, encoding="utf-8-sig")
-            print(f"[table] {name}: EMPTY -> {out_path}")
+    for metric in ["latency_us", "energy_uj"]:
+        if metric not in df.columns:
             continue
-        t.to_csv(out_path, index=False, encoding="utf-8-sig")
-        print(f"[table] {name}: {len(t)} rows -> {out_path}")
 
+        trend = _trend_round_task(df, metric=metric, min_n=min_n)
+        _write_table(trend, tables_dir / f"trend_{metric}_round_task.csv", f"trend_{metric}_round_task")
 
-def run_eda(parquet_path: Path = PARQUET_DEFAULT, *, min_n: int = MIN_N_DEFAULT) -> None:
-    TABLES_DIR_DEFAULT.mkdir(parents=True, exist_ok=True)
-    df = load_dataset(parquet_path)
-    tables = build_core_tables(df, min_n=min_n)
-    save_tables(tables)
+        trend_idx = _index_trend_table(trend, metric=metric, min_n=min_n)
+        _write_table(trend_idx, tables_dir / f"trend_{metric}_round_task_indexed.csv", f"trend_{metric}_round_task_indexed")
 
 
 if __name__ == "__main__":
-    run_eda()
+    main()
