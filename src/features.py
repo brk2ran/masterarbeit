@@ -10,7 +10,7 @@ TASKS_ALL_ORDER = ["AD", "IC", "KWS", "VWW", "UNKNOWN", "OUT_OF_SCOPE"]
 # Benchmark darf nur als Ersatz-Model dienen, wenn es wie ein Modellstring aussieht.
 # In deinen Daten ist benchmark i.d.R. "Tiny" -> greift damit NICHT.
 MODEL_LIKE_PATTERN = re.compile(
-    r"(?:DS\s*-?\s*CNN|1D\s*-?\s*DS\s*-?\s*CNN|RESNET|MOBILENET|AUTOENCODER|FC\s+AUTOENCODER)",
+    r"DS\s*-?\s*CNN|1D\s*-?\s*DS\s*-?\s*CNN|RESNET|MOBILENET|AUTOENCODER|FC\s+AUTOENCODER",
     re.IGNORECASE,
 )
 

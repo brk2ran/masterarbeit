@@ -26,6 +26,10 @@ TABLES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "tables"
 FIGURES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "figures"
 BASELINE_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "baseline"
 
+# Baseline-Policy (Option A): Baseline-Kandidaten ab dieser Round zulassen
+MIN_BASELINE_ROUND = "v0.7"
+ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
+
 
 # ---------------------------
 # Helpers: printing / formatting
@@ -83,6 +87,14 @@ def _boolish(series: pd.Series) -> pd.Series:
         return series.astype("boolean")
     s = series.astype(str).str.strip().str.lower()
     return s.map({"true": True, "false": False, "1": True, "0": False}).astype("boolean")
+
+
+def _round_rank(r: object) -> int:
+    s = str(r).strip()
+    try:
+        return ROUND_ORDER.index(s)
+    except ValueError:
+        return 10_000
 
 
 # ---------------------------
@@ -226,7 +238,7 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
     _sec("B) Coverage-Checks (Round × Task)")
 
     cov = round_task_counts(df, include_unknown=True, include_out_of_scope=True)
-    _print_df(cov, verbose=True)  # die ist klein, immer vollständig
+    _print_df(cov, verbose=True)  # klein, immer vollständig
     _write_csv(cov, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
 
     _sec("B2) Coverage-Checks (Round × Task × Model)")
@@ -265,7 +277,6 @@ def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> No
         share = (total_with / total_rows) if total_rows > 0 else 0.0
         print(f"Metric: {metric} | rows_with_metric={total_with}/{total_rows} | share={share:.3f}")
 
-        # nur dann ins Terminal, wenn es überhaupt Signal gibt (oder verbose)
         if share > 0 or verbose:
             if verbose:
                 _print_df(covm, verbose=True)
@@ -371,6 +382,9 @@ def _missingness_plausibility(df: pd.DataFrame, *, verbose: bool) -> None:
             print("energy_uj quantiles:", _quantiles(en, qs=(0.25, 0.5, 0.75, 0.95, 0.99)))
 
 
+# ---------------------------
+# QA Gates for trend tables
+# ---------------------------
 def _trendtable_schema_gate(
     tables_dir: Path,
     *,
@@ -381,7 +395,7 @@ def _trendtable_schema_gate(
     """
     Prüft, ob die Trendtabellen die erweiterten Spalten enthalten und plausibel sind.
     """
-    _sec("H) Trendtable Schema Gate (q10/q90/iqr/low_n)")
+    _sec("H1) Trendtable Schema Gate (q10/q90/iqr/low_n)")
 
     checks = [
         ("trend_latency_us_round_task.csv", "latency_us", ["round", "task"]),
@@ -422,21 +436,18 @@ def _trendtable_schema_gate(
             failures.append(msg)
             continue
 
-        # n numerisch?
         n = pd.to_numeric(df[f"{prefix}_n"], errors="coerce")
         if n.isna().any():
             msg = f"{filename}: {prefix}_n enthält NaN / nicht-numerisch"
             print("WARN:", msg)
             failures.append(msg)
 
-        # low_n bool-artig?
         low_norm = _boolish(df[f"{prefix}_low_n"])
         if low_norm.isna().any():
             msg = f"{filename}: {prefix}_low_n ist nicht vollständig bool-artig"
             print("WARN:", msg)
             failures.append(msg)
 
-        # iqr >= 0 (wenn Werte vorhanden)
         iqr = pd.to_numeric(df[f"{prefix}_iqr"], errors="coerce")
         iqr_bad = iqr.dropna() < -1e-12
         if iqr_bad.any():
@@ -455,11 +466,15 @@ def _trendtable_schema_gate(
 
         mask_core = q10.notna() & q25.notna() & med.notna() & q75.notna() & q90.notna()
         if mask_core.any():
-            bad_core = (q10[mask_core] > q25[mask_core]) | (q25[mask_core] > med[mask_core]) | (med[mask_core] > q75[mask_core]) | (q75[mask_core] > q90[mask_core])
+            bad_core = (q10[mask_core] > q25[mask_core]) | (q25[mask_core] > med[mask_core]) | (
+                med[mask_core] > q75[mask_core]
+            ) | (q75[mask_core] > q90[mask_core])
             if bad_core.any():
-                ex = df.loc[mask_core].loc[bad_core].head(5)[key_cols + [f"{prefix}_q10", f"{prefix}_q25", f"{prefix}_median", f"{prefix}_q75", f"{prefix}_q90"]]
-                msg = f"{filename}: Quantile-Reihenfolge verletzt (q10≤q25≤median≤q75≤q90). Beispiele:\n{ex.to_string(index=False)}"
-                print("WARN:", msg)
+                ex = df.loc[mask_core].loc[bad_core].head(5)[
+                    key_cols
+                    + [f"{prefix}_q10", f"{prefix}_q25", f"{prefix}_median", f"{prefix}_q75", f"{prefix}_q90"]
+                ]
+                print("WARN:", f"{filename}: Quantile-Reihenfolge verletzt. Beispiele:\n{ex.to_string(index=False)}")
                 failures.append(f"{filename}: quantile order violated (core)")
 
         mask_edges = mask_core & mn.notna() & mx.notna()
@@ -467,11 +482,10 @@ def _trendtable_schema_gate(
             bad_edges = (mn[mask_edges] > q10[mask_edges]) | (q90[mask_edges] > mx[mask_edges])
             if bad_edges.any():
                 ex = df.loc[mask_edges].loc[bad_edges].head(5)[key_cols + [f"{prefix}_min", f"{prefix}_q10", f"{prefix}_q90", f"{prefix}_max"]]
-                msg = f"{filename}: Randbedingungen verletzt (min≤q10 und q90≤max). Beispiele:\n{ex.to_string(index=False)}"
-                print("WARN:", msg)
+                print("WARN:", f"{filename}: Randbedingungen verletzt. Beispiele:\n{ex.to_string(index=False)}")
                 failures.append(f"{filename}: quantile order violated (edges)")
 
-        # low_n korrekt gemäß min_n? (nur prüfen, wenn n numerisch ist und low_norm parsebar ist)
+        # low_n korrekt gemäß min_n?
         m = n.notna() & low_norm.notna()
         if m.any():
             expected_low = (n[m].fillna(0).astype(int) < int(min_n)).astype(bool).values
@@ -493,6 +507,131 @@ def _trendtable_schema_gate(
         print("OK: Trendtabellen enthalten erwartete erweiterten Spalten und sind plausibel.")
 
 
+def _indexed_tables_gate(
+    tables_dir: Path,
+    *,
+    min_n: int,
+    strict: bool,
+    verbose: bool,
+    min_baseline_round: str = MIN_BASELINE_ROUND,
+) -> None:
+    """
+    QA-Gate für *_indexed.csv:
+    - Baseline-Round darf nicht vor min_baseline_round liegen (Option A -> v0.7)
+    - Pre-Baseline (round < baseline_round) muss Index-Spalten NaN haben
+    - Baseline-Row: median_index ~= 1.0 (wenn baseline exists)
+    - baseline_n >= min_n (wenn baseline exists)
+    """
+    _sec("H2) Indexed Tables Gate (Baseline ab v0.7, Pre-Baseline NaN)")
+
+    checks = [
+        ("trend_latency_us_round_task_indexed.csv", "latency_us", ["round", "task"]),
+        ("trend_energy_uj_round_task_indexed.csv", "energy_uj", ["round", "task"]),
+    ]
+
+    failures: List[str] = []
+    min_base_rank = _round_rank(min_baseline_round)
+
+    for filename, prefix, key_cols in checks:
+        path = tables_dir / filename
+        if not path.exists():
+            msg = f"FEHLT: {filename} (erwarte nach python -m src.eda)"
+            print("WARN:", msg)
+            failures.append(msg)
+            continue
+
+        df = pd.read_csv(path)
+
+        # required columns
+        required = set(
+            key_cols
+            + [
+                f"{prefix}_n",
+                f"{prefix}_median",
+                f"{prefix}_q25",
+                f"{prefix}_q75",
+                "baseline_round",
+                "baseline_n",
+                "baseline_median",
+                f"{prefix}_median_index",
+                f"{prefix}_q25_index",
+                f"{prefix}_q75_index",
+            ]
+        )
+        missing = required - set(df.columns)
+        if missing:
+            msg = f"{filename}: Missing columns: {sorted(missing)}"
+            print("WARN:", msg)
+            failures.append(msg)
+            continue
+
+        # ranks
+        rr = df["round"].map(_round_rank)
+        br = df["baseline_round"].astype(str).where(df["baseline_round"].notna(), np.nan)
+        br_rank = br.map(lambda x: _round_rank(x) if isinstance(x, str) and x != "nan" else np.nan)
+
+        # baseline policy: baseline >= min_baseline_round
+        mask_has_base = df["baseline_round"].notna() & df["baseline_median"].notna()
+        if mask_has_base.any():
+            bad_base = br_rank[mask_has_base] < min_base_rank
+            if bad_base.any():
+                ex = df.loc[mask_has_base].loc[bad_base].head(10)[key_cols + ["baseline_round", "baseline_n", "baseline_median"]]
+                print("WARN:", f"{filename}: baseline_round vor {min_baseline_round} gefunden. Beispiele:\n{ex.to_string(index=False)}")
+                failures.append(f"{filename}: baseline_round < {min_baseline_round}")
+
+        # baseline_n >= min_n
+        bn = pd.to_numeric(df["baseline_n"], errors="coerce")
+        if mask_has_base.any():
+            bad_bn = bn[mask_has_base] < int(min_n)
+            if bad_bn.any():
+                ex = df.loc[mask_has_base].loc[bad_bn].head(10)[key_cols + ["baseline_round", "baseline_n"]]
+                print("WARN:", f"{filename}: baseline_n < min_n={min_n}. Beispiele:\n{ex.to_string(index=False)}")
+                failures.append(f"{filename}: baseline_n < min_n")
+
+        # pre-baseline -> index cols must be NaN
+        idx_cols = [c for c in df.columns if c.endswith("_index") and c.startswith(prefix)]
+        pre = mask_has_base & (rr < br_rank)
+        if pre.any():
+            any_non_na = df.loc[pre, idx_cols].notna().any(axis=1)
+            if any_non_na.any():
+                ex = df.loc[pre].loc[any_non_na].head(10)[key_cols + ["baseline_round"] + idx_cols]
+                print("WARN:", f"{filename}: Pre-Baseline enthält nicht-NaN in Index-Spalten. Beispiele:\n{ex.to_string(index=False)}")
+                failures.append(f"{filename}: pre-baseline has non-NaN index")
+
+        # v0.5 sanity: should be pre-baseline and thus NaN (wenn baseline exists)
+        mask_v05 = (df["round"].astype(str) == "v0.5") & mask_has_base
+        if mask_v05.any():
+            any_non_na_v05 = df.loc[mask_v05, idx_cols].notna().any(axis=1)
+            if any_non_na_v05.any():
+                ex = df.loc[mask_v05].loc[any_non_na_v05].head(10)[key_cols + ["baseline_round"] + idx_cols]
+                print("WARN:", f"{filename}: v0.5 hat Indexwerte obwohl Baseline existiert. Beispiele:\n{ex.to_string(index=False)}")
+                failures.append(f"{filename}: v0.5 has non-NaN index")
+
+        # baseline row -> median_index approx 1.0 (tolerant)
+        # baseline row(s): round == baseline_round
+        is_base_row = mask_has_base & (df["round"].astype(str) == df["baseline_round"].astype(str))
+        if is_base_row.any():
+            med_idx = pd.to_numeric(df.loc[is_base_row, f"{prefix}_median_index"], errors="coerce")
+            bad = med_idx.notna() & (np.abs(med_idx - 1.0) > 1e-6)
+            if bad.any():
+                ex = df.loc[is_base_row].loc[bad].head(10)[key_cols + ["baseline_round", f"{prefix}_median_index", "baseline_median", f"{prefix}_median"]]
+                print("WARN:", f"{filename}: baseline row median_index != 1.0. Beispiele:\n{ex.to_string(index=False)}")
+                failures.append(f"{filename}: baseline row median_index != 1.0")
+
+        if verbose:
+            print(f"OK: {filename} geladen | rows={len(df)} | idx_cols={len(idx_cols)} | min_baseline_round={min_baseline_round}")
+
+    if failures:
+        if strict:
+            raise SystemExit(2)
+        print("\nIndexed Tables Gate: WARNINGS (kein Abbruch, da strict=False).")
+    else:
+        print(f"OK: *_indexed.csv erfüllen Baseline-Policy (>= {min_baseline_round}) und Pre-Baseline=NaN.")
+
+
+# ---------------------------
+# Misc checks
+# ---------------------------
 def _clustering_sanity(reports_dir: Path) -> None:
     _sec("F) Clustering-Sanity-Check (hardware_clusters.csv)")
 
@@ -512,6 +651,9 @@ def _clustering_sanity(reports_dir: Path) -> None:
         print("WARN: Spalte 'cluster_id' fehlt.")
 
 
+# ---------------------------
+# Baseline freeze/diff
+# ---------------------------
 def _baseline_freeze(
     baseline_dir: Path,
     tables_dir: Path,
@@ -589,6 +731,7 @@ def run_checks(
     baseline_dir: Optional[Path] = None,
     verbose: bool = False,
     strict_trend_schema: bool = False,
+    strict_indexed_gate: bool = False,
     min_n: int = 5,
 ) -> None:
     tables_dir = reports_dir / "tables"
@@ -604,7 +747,17 @@ def run_checks(
     _unknown_summary(df, tables_dir=tables_dir)
     _duplicates_check(df, verbose=verbose)
     _missingness_plausibility(df, verbose=verbose)
+
+    # QA-Gates für Trendtabellen
     _trendtable_schema_gate(tables_dir, min_n=min_n, strict=strict_trend_schema, verbose=verbose)
+    _indexed_tables_gate(
+        tables_dir,
+        min_n=min_n,
+        strict=strict_indexed_gate,
+        verbose=verbose,
+        min_baseline_round=MIN_BASELINE_ROUND,
+    )
+
     _clustering_sanity(reports_dir)
 
     if freeze_baseline:
@@ -625,6 +778,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     parser.add_argument("--min-n", type=int, default=5, help="Low-n threshold used in trend schema checks")
     parser.add_argument("--strict-trend-schema", action="store_true", help="Exit non-zero if trend schema gate fails")
+    parser.add_argument("--strict-indexed-gate", action="store_true", help="Exit non-zero if indexed tables gate fails")
 
     args = parser.parse_args(argv)
 
@@ -635,6 +789,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         baseline_dir=args.baseline_dir,
         verbose=args.verbose,
         strict_trend_schema=args.strict_trend_schema,
+        strict_indexed_gate=args.strict_indexed_gate,
         min_n=args.min_n,
     )
 

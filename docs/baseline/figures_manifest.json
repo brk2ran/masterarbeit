@@ -1,0 +1,62 @@
+{
+  "reports/figures/trend_energy_uj.png": {
+    "name": "trend_energy_uj.png",
+    "relpath": "reports/figures/trend_energy_uj.png",
+    "bytes": 246169,
+    "sha256": "d11652aba1c1950629338544945fbb48ddf8146215cec9a51b1db2675b4c9cca"
+  },
+  "reports/figures/trend_energy_uj_index.png": {
+    "name": "trend_energy_uj_index.png",
+    "relpath": "reports/figures/trend_energy_uj_index.png",
+    "bytes": 243829,
+    "sha256": "ce38e867b1bdf9011177a456897067ba477832724373447c8bd90cbca6803841"
+  },
+  "reports/figures/trend_latency_us.png": {
+    "name": "trend_latency_us.png",
+    "relpath": "reports/figures/trend_latency_us.png",
+    "bytes": 208702,
+    "sha256": "15b5776c9165be84174dc8a7912d56a94d62173e95e0e71ef7bb5ac6780badd4"
+  },
+  "reports/figures/trend_latency_us_index.png": {
+    "name": "trend_latency_us_index.png",
+    "relpath": "reports/figures/trend_latency_us_index.png",
+    "bytes": 202845,
+    "sha256": "4fe56ab73010b531cbf4851dc39059dc45c3361c45d64f17f4694a4333102b66"
+  },
+  "reports/figures/unknown_share_by_round.png": {
+    "name": "unknown_share_by_round.png",
+    "relpath": "reports/figures/unknown_share_by_round.png",
+    "bytes": 58325,
+    "sha256": "a7e88bcf531541e1b3780e98008ad504f912ad5d051d730acdebebe62235f4b2"
+  },
+  "reports/figures/trend_energy_uj.svg": {
+    "name": "trend_energy_uj.svg",
+    "relpath": "reports/figures/trend_energy_uj.svg",
+    "bytes": 59833,
+    "sha256": "8cfa214b3d28c82db3c6cb5cd7a21415ca659d672ced3eb8977db402208c0839"
+  },
+  "reports/figures/trend_energy_uj_index.svg": {
+    "name": "trend_energy_uj_index.svg",
+    "relpath": "reports/figures/trend_energy_uj_index.svg",
+    "bytes": 54602,
+    "sha256": "db8c597abdf8b14580dd87f4a9070fe5ebc08c1d98e68c1386cd8e355013594d"
+  },
+  "reports/figures/trend_latency_us.svg": {
+    "name": "trend_latency_us.svg",
+    "relpath": "reports/figures/trend_latency_us.svg",
+    "bytes": 62837,
+    "sha256": "845978c1818ff0e69241edb92a46926c44d4b6b3fee4237d20ee604d8a3a51e4"
+  },
+  "reports/figures/trend_latency_us_index.svg": {
+    "name": "trend_latency_us_index.svg",
+    "relpath": "reports/figures/trend_latency_us_index.svg",
+    "bytes": 52440,
+    "sha256": "ece033d07193c68e5f1831251770d9196b0d253cb94dd3679fd5f4ae2f893050"
+  },
+  "reports/figures/unknown_share_by_round.svg": {
+    "name": "unknown_share_by_round.svg",
+    "relpath": "reports/figures/unknown_share_by_round.svg",
+    "bytes": 38147,
+    "sha256": "b070ceeb7b318fd1a900f430b2f6e050d8f49f938216737cb5027912f2831eb8"
+  }
+}
