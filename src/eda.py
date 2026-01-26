@@ -7,7 +7,6 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-
 ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
 CORE_TASKS = ["AD", "IC", "KWS", "VWW"]
 
@@ -161,6 +160,65 @@ def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame
     return g
 
 
+def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_col: str) -> pd.DataFrame:
+    """
+    FF1b/FF1c: Trendtabellen für IN_SCOPE + CORE_TASKS zusätzlich nach Faktor.
+    (Minimal: deskriptiv, keine Modellierung)
+    """
+    tmp = df.copy()
+
+    if factor_col not in tmp.columns:
+        tmp[factor_col] = "UNKNOWN"
+
+    # NaNs in Faktor explizit labeln, damit grouping stabil ist
+    tmp[factor_col] = tmp[factor_col].astype("object").where(tmp[factor_col].notna(), "UNKNOWN")
+
+    tmp = tmp[
+        (tmp["scope_status"] == "IN_SCOPE")
+        & (tmp["task_canon"].isin(CORE_TASKS))
+        & (tmp[metric].notna())
+    ].copy()
+
+    def q(x: pd.Series, p: float) -> float:
+        return float(np.quantile(x.to_numpy(), p))
+
+    g = tmp.groupby(["round", "task_canon", factor_col])[metric].agg(
+        n="count",
+        median="median",
+        q10=lambda x: q(x, 0.10),
+        q25=lambda x: q(x, 0.25),
+        q75=lambda x: q(x, 0.75),
+        q90=lambda x: q(x, 0.90),
+        min="min",
+        max="max",
+    ).reset_index()
+
+    g["iqr"] = g["q75"] - g["q25"]
+    g["low_n"] = g["n"] < int(min_n)
+
+    g["round_rank"] = g["round"].map(_round_rank)
+    g["task_rank"] = g["task_canon"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    g = g.sort_values(["round_rank", "task_rank", factor_col]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+
+    g = g.rename(
+        columns={
+            "task_canon": "task",
+            "n": f"{metric}_n",
+            "median": f"{metric}_median",
+            "q10": f"{metric}_q10",
+            "q25": f"{metric}_q25",
+            "q75": f"{metric}_q75",
+            "q90": f"{metric}_q90",
+            "min": f"{metric}_min",
+            "max": f"{metric}_max",
+            "iqr": f"{metric}_iqr",
+            "low_n": f"{metric}_low_n",
+            factor_col: factor_col,
+        }
+    )
+    return g
+
+
 def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
     """
     Option A: Baseline-Kandidaten erst ab MIN_BASELINE_ROUND zulassen.
@@ -246,6 +304,16 @@ def main() -> None:
 
     df = pd.read_parquet(data_path)
 
+    # Optional: Features ergänzen, falls Parquet die neuen Spalten noch nicht enthält
+    need_cols = {"accelerator_present", "processor_family", "software_stack"}
+    if not need_cols.issubset(set(df.columns)):
+        try:
+            from src.features import add_features
+            df = add_features(df)
+        except Exception:
+            # bewusst kein harter Fail: EDA kann weiterlaufen, Faktor-Tabellen werden dann ggf. "UNKNOWN"
+            pass
+
     # A) Coverage & Data quality
     cov_all = _coverage_round_task_all(df)
     _write_table(cov_all, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
@@ -275,6 +343,21 @@ def main() -> None:
 
         trend_idx = _index_trend_table(trend, metric=metric, min_n=min_n)
         _write_table(trend_idx, tables_dir / f"trend_{metric}_round_task_indexed.csv", f"trend_{metric}_round_task_indexed")
+
+    # D) FF1b/FF1c Faktor-Tabellen (minimal, kein Overengineering)
+    #    Nur wenn Basis-Metrik vorhanden ist.
+    for metric in ["latency_us", "energy_uj"]:
+        if metric not in df.columns:
+            continue
+
+        t_acc = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="accelerator_present")
+        _write_table(t_acc, tables_dir / f"trend_{metric}_round_task_accelerator_present.csv", f"trend_{metric}_round_task_accelerator_present")
+
+        t_cpu = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="processor_family")
+        _write_table(t_cpu, tables_dir / f"trend_{metric}_round_task_processor_family.csv", f"trend_{metric}_round_task_processor_family")
+
+        t_sw = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="software_stack")
+        _write_table(t_sw, tables_dir / f"trend_{metric}_round_task_software_stack.csv", f"trend_{metric}_round_task_software_stack")
 
 
 if __name__ == "__main__":

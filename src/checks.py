@@ -4,111 +4,56 @@ import argparse
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
-from src.features import (
-    add_features,
-    get_analysis_subsets,
-    metric_coverage_by_round_task,
-    round_task_counts,
-    unknown_summary_by_round,
-)
+from src.features import add_features, get_analysis_subsets, round_task_counts
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PARQUET_DEFAULT = PROJECT_ROOT / "data" / "interim" / "mlperf_tiny_raw.parquet"
-REPORTS_DIR_DEFAULT = PROJECT_ROOT / "reports"
-TABLES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "tables"
-FIGURES_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "figures"
-BASELINE_DIR_DEFAULT = REPORTS_DIR_DEFAULT / "baseline"
+# ---------------------------------------------------------------------
+# Paths / Defaults
+# ---------------------------------------------------------------------
 
-# Baseline-Policy (Option A): Baseline-Kandidaten ab dieser Round zulassen
-MIN_BASELINE_ROUND = "v0.7"
-ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
+PROJECT_ROOT = Path(".")
+PARQUET_PATH = PROJECT_ROOT / "data" / "interim" / "mlperf_tiny_raw.parquet"
+REPORTS_DIR = PROJECT_ROOT / "reports"
+TABLES_DIR = REPORTS_DIR / "tables"
+FIGURES_DIR = REPORTS_DIR / "figures"
 
-
-# ---------------------------
-# Helpers: printing / formatting
-# ---------------------------
-def _heading(title: str, char: str = "=", width_min: int = 60) -> None:
-    print("\n" + title)
-    print(char * max(width_min, len(title)))
+BASELINE_DIR_DEFAULT = PROJECT_ROOT / "docs" / "baseline"
+BASELINE_TABLES_DIR_DEFAULT = PROJECT_ROOT / "docs" / "baseline_tables"
+BASELINE_META = BASELINE_DIR_DEFAULT / "meta.json"
+BASELINE_TABLES_MANIFEST = BASELINE_DIR_DEFAULT / "tables_manifest.json"
+BASELINE_FIGURES_MANIFEST = BASELINE_DIR_DEFAULT / "figures_manifest.json"
 
 
-def _hdr(title: str) -> None:
-    _heading(title, "=")
+def _baseline_paths(baseline_dir: Path) -> Tuple[Path, Path, Path, Path]:
+    """Returns (meta.json, tables_manifest.json, figures_manifest.json, baseline_tables_dir)."""
+    baseline_dir = Path(baseline_dir)
+    meta_p = baseline_dir / "meta.json"
+    tab_p = baseline_dir / "tables_manifest.json"
+    fig_p = baseline_dir / "figures_manifest.json"
+    # keep the convention: docs/baseline + docs/baseline_tables
+    baseline_tables_dir = baseline_dir.parent / "baseline_tables"
+    return meta_p, tab_p, fig_p, baseline_tables_dir
 
 
-def _sec(title: str) -> None:
-    _heading(title, "-")
+def _normalize_scope_status(values: pd.Series) -> pd.Series:
+    """Normalisiere scope_status auf {IN_SCOPE, OUT_OF_SCOPE, UNKNOWN}.
 
-
-def _pct(x: float) -> str:
-    return f"{x:.3f}"
-
-
-def _safe_num(df: pd.DataFrame, col: str) -> pd.Series:
-    if col not in df.columns:
-        return pd.Series([], dtype="float64")
-    return pd.to_numeric(df[col], errors="coerce")
-
-
-def _quantiles(s: pd.Series, qs=(0.0, 0.5, 1.0)) -> Dict[float, float]:
-    s2 = pd.to_numeric(s, errors="coerce").dropna()
-    if s2.empty:
-        return {q: float("nan") for q in qs}
-    qv = s2.quantile(list(qs)).to_dict()
-    return {float(k): float(v) for k, v in qv.items()}
-
-
-def _print_df(df: pd.DataFrame, *, verbose: bool, max_rows: int = 30, title: Optional[str] = None) -> None:
-    if title:
-        print(title)
-    if df.empty:
-        print("(empty)")
-        return
-    if verbose or len(df) <= max_rows:
-        print(df.to_string(index=False))
-    else:
-        print(df.head(max_rows).to_string(index=False))
-        print(f"... ({len(df)} rows; Details ggf. in CSV)")
-
-
-def _boolish(series: pd.Series) -> pd.Series:
+    Unterstützt Gross-/Kleinschreibung und gängig
+    variierende Schreibweisen.
     """
-    Normalize "bool-ish" values to True/False with NaN for unparseable entries.
-    Accepted: True/False, 1/0, 'true'/'false', '1'/'0'.
-    """
-    if series.dtype == bool:
-        return series.astype("boolean")
-    s = series.astype(str).str.strip().str.lower()
-    return s.map({"true": True, "false": False, "1": True, "0": False}).astype("boolean")
+    s = values.astype(str).str.strip().str.upper()
+    s = s.replace({"NAN": "UNKNOWN", "NONE": "UNKNOWN", "": "UNKNOWN"})
+    s = s.replace({"IN SCOPE": "IN_SCOPE", "OUT OF SCOPE": "OUT_OF_SCOPE"})
+    s = s.where(s.isin(["IN_SCOPE", "OUT_OF_SCOPE", "UNKNOWN"]), "UNKNOWN")
+    return s
 
 
-def _round_rank(r: object) -> int:
-    s = str(r).strip()
-    try:
-        return ROUND_ORDER.index(s)
-    except ValueError:
-        return 10_000
-
-
-# ---------------------------
-# Baseline manifests
-# ---------------------------
-@dataclass
-class FileEntry:
-    name: str
-    relpath: str
-    bytes: int
-    sha256: str
-
-
-def _sha256_file(path: Path) -> str:
+def _sha256_of_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
@@ -116,683 +61,442 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def _manifest_for_dir(root: Path, patterns: Tuple[str, ...]) -> List[FileEntry]:
-    entries: List[FileEntry] = []
+def _collect_files(root: Path, suffixes: Tuple[str, ...]) -> List[Path]:
     if not root.exists():
-        return entries
-    for pat in patterns:
-        for p in sorted(root.glob(pat)):
-            if not p.is_file():
-                continue
-            rel = str(p.relative_to(PROJECT_ROOT)).replace("\\", "/")
-            entries.append(
-                FileEntry(
-                    name=p.name,
-                    relpath=rel,
-                    bytes=p.stat().st_size,
-                    sha256=_sha256_file(p),
-                )
-            )
-    return entries
+        return []
+    files: List[Path] = []
+    for p in sorted(root.iterdir()):
+        if p.is_file() and p.suffix.lower() in suffixes:
+            files.append(p)
+    return files
 
 
-def _save_json(path: Path, obj: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=2, ensure_ascii=False)
+# ---------------------------------------------------------------------
+# Baseline freeze (manifests + meta)
+# ---------------------------------------------------------------------
 
 
-def _load_json(path: Path) -> object:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+def freeze_baseline(*, tables_dir: Path, figures_dir: Path, baseline_dir: Path) -> None:
+    """Schreibt Baseline-Manifeste + Meta basierend auf aktuellen reports/."""
+    baseline_dir.mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "docs").mkdir(parents=True, exist_ok=True)
 
+    table_files = _collect_files(tables_dir, (".csv",))
+    figure_files = _collect_files(figures_dir, (".png", ".svg"))
 
-def _entries_to_dict(entries: List[FileEntry]) -> Dict[str, Dict[str, object]]:
-    return {
-        e.relpath: {"name": e.name, "relpath": e.relpath, "bytes": e.bytes, "sha256": e.sha256}
-        for e in entries
+    tables_manifest = {p.name: _sha256_of_file(p) for p in table_files}
+    figures_manifest = {p.name: _sha256_of_file(p) for p in figure_files}
+
+    meta = {
+        "tables_dir": str(tables_dir.resolve()),
+        "figures_dir": str(figures_dir.resolve()),
+        "created_at": pd.Timestamp.now(tz="Europe/Berlin").isoformat(),
+        "n_tables": len(table_files),
+        "n_figures": len(figure_files),
     }
 
+    meta_p, tab_p, fig_p, baseline_tables_dir = _baseline_paths(baseline_dir)
+    baseline_tables_dir.mkdir(parents=True, exist_ok=True)
 
-def _diff_manifests(base: Dict[str, Dict[str, object]], curr: Dict[str, Dict[str, object]]) -> Dict[str, List[str]]:
-    base_keys = set(base.keys())
-    curr_keys = set(curr.keys())
+    tab_p.write_text(json.dumps(tables_manifest, indent=2), encoding="utf-8")
+    fig_p.write_text(json.dumps(figures_manifest, indent=2), encoding="utf-8")
+    meta_p.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
-    missing_current = sorted(base_keys - curr_keys)
-    missing_baseline = sorted(curr_keys - base_keys)
+    # Optional: baseline_tables Snapshot kopieren (nur CSVs)
+    for p in table_files:
+        target = baseline_tables_dir / p.name
+        target.write_bytes(p.read_bytes())
 
-    same: List[str] = []
-    changed: List[str] = []
-    for k in sorted(base_keys & curr_keys):
-        if base[k]["sha256"] == curr[k]["sha256"] and base[k]["bytes"] == curr[k]["bytes"]:
-            same.append(k)
-        else:
-            changed.append(k)
-
-    return {
-        "same": same,
-        "changed": changed,
-        "missing_baseline": missing_baseline,
-        "missing_current": missing_current,
-    }
+    print("Baseline eingefroren:")
+    print(f"- meta: {meta_p}")
+    print(f"- tables_manifest: {tab_p}")
+    print(f"- figures_manifest: {fig_p}")
+    print(f"- baseline_tables/: {baseline_tables_dir}")
 
 
-# ---------------------------
-# Load + guards
-# ---------------------------
-def _load_df(parquet_path: Path) -> pd.DataFrame:
+# ---------------------------------------------------------------------
+# Checks
+# ---------------------------------------------------------------------
+
+
+@dataclass
+class ScopeStats:
+    rows_total: int
+    rows_in_scope: int
+    rows_out_of_scope: int
+    rows_unknown: int
+
+
+def _load_and_features(parquet_path: Path) -> pd.DataFrame:
     if not parquet_path.exists():
         raise FileNotFoundError(f"Parquet nicht gefunden: {parquet_path}")
+
     df = pd.read_parquet(parquet_path)
-    if "task_canon" not in df.columns or "model_mlc_canon" not in df.columns or "scope_status" not in df.columns:
+
+    # defensive: features may already exist or not
+    try:
         df = add_features(df)
+    except Exception as e:
+        raise RuntimeError(f"add_features fehlgeschlagen: {e}") from e
+
     return df
 
 
-# ---------------------------
-# Checks
-# ---------------------------
-def _scope_checks(df: pd.DataFrame, *, verbose: bool) -> None:
-    _sec("A) Scope-Checks (OUT_OF_SCOPE / IN_SCOPE / UNKNOWN)")
+def _scope_stats(df: pd.DataFrame) -> ScopeStats:
+    if "scope_status" not in df.columns:
+        raise KeyError("Spalte 'scope_status' fehlt (add_features muss diese setzen).")
 
-    total = len(df)
-    in_scope = int((df["scope_status"] == "IN_SCOPE").sum())
-    out_scope = int((df["scope_status"] == "OUT_OF_SCOPE").sum())
-    unknown = int((df["scope_status"] == "UNKNOWN").sum())
-
-    print(f"Rows total: {total}")
-    print(f"Rows in_scope: {in_scope} ({_pct(in_scope / total)})")
-    print(f"Rows out_of_scope: {out_scope} ({_pct(out_scope / total)})")
-    print(f"Rows UNKNOWN (ohne out_of_scope): {unknown} ({_pct(unknown / total)})")
-
-    # UNKNOWN Ursachen kurz
-    if "model_mlc_source" in df.columns:
-        u = df[df["scope_status"] == "UNKNOWN"]
-        if not u.empty:
-            vc = u["model_mlc_source"].value_counts(dropna=False)
-            print("\nUNKNOWN Ursachen (model_mlc_source):")
-            for k, v in vc.items():
-                print(f"  - {k}: {int(v)}")
-
-    # Gate: IN_SCOPE darf nicht ausschließlich UNKNOWN/OUT_OF_SCOPE Tasks haben
-    in_scope_df = df[df["scope_status"] == "IN_SCOPE"]
-    if not in_scope_df.empty:
-        piv = in_scope_df.groupby(["round", "task_canon"], dropna=False).size().unstack(fill_value=0)
-        core = ["AD", "IC", "KWS", "VWW"]
-        bad_rounds = [str(rnd) for rnd in piv.index if sum(int(piv.loc[rnd].get(t, 0)) for t in core) == 0]
-        if bad_rounds:
-            print("\nFAIL: Rounds mit IN_SCOPE Rows, aber 0 in AD/IC/KWS/VWW (Task Mapping defekt):")
-            for r in bad_rounds:
-                print(f"  - {r}")
-        elif verbose:
-            print("\nOK: Keine Round mit IN_SCOPE>0 und leeren Kern-Tasks.")
+    scope = _normalize_scope_status(df["scope_status"])
+    rows_total = len(df)
+    rows_in_scope = int((scope == "IN_SCOPE").sum())
+    rows_out_of_scope = int((scope == "OUT_OF_SCOPE").sum())
+    rows_unknown = int((scope == "UNKNOWN").sum())
+    return ScopeStats(rows_total, rows_in_scope, rows_out_of_scope, rows_unknown)
 
 
-def _write_csv(df: pd.DataFrame, path: Path, label: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False, encoding="utf-8-sig")
-    print(f"[table] {label}: {len(df)} rows -> {path}")
+def _scope_unknown_causes(df: pd.DataFrame) -> pd.Series:
+    # Ursache: missing source fields (example: model_mlc_source)
+    if "model_mlc_source" not in df.columns:
+        return pd.Series(dtype=int)
+    s = df.loc[_normalize_scope_status(df["scope_status"]) == "UNKNOWN", "model_mlc_source"]
+    s = s.fillna("missing").astype(str).str.strip()
+    return s.value_counts()
 
 
-def _coverage_checks(df: pd.DataFrame, tables_dir: Path, *, verbose: bool) -> None:
-    _sec("B) Coverage-Checks (Round × Task)")
+def _coverage_round_task(df: pd.DataFrame) -> pd.DataFrame:
+    # Uses canonical task column if present, otherwise task
+    if "round" not in df.columns:
+        raise KeyError("Spalte 'round' fehlt.")
+    task_col = "task_canon" if "task_canon" in df.columns else ("task" if "task" in df.columns else None)
+    if task_col is None:
+        raise KeyError("Weder 'task_canon' noch 'task' in df vorhanden.")
 
-    cov = round_task_counts(df, include_unknown=True, include_out_of_scope=True)
-    _print_df(cov, verbose=True)  # klein, immer vollständig
-    _write_csv(cov, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
+    tmp = df.copy()
+    tmp[task_col] = tmp[task_col].fillna("UNKNOWN")
+    tmp["scope_status"] = _normalize_scope_status(tmp.get("scope_status", pd.Series(["UNKNOWN"] * len(tmp))))
 
-    _sec("B2) Coverage-Checks (Round × Task × Model)")
-    cov_rtm = (
-        df.groupby(["round", "task_canon", "model_mlc_canon", "scope_status"], dropna=False)
-        .size()
-        .reset_index(name="rows")
-        .sort_values(["round", "task_canon", "model_mlc_canon", "scope_status"])
-    )
-    _write_csv(cov_rtm, tables_dir / "coverage_round_task_model.csv", "coverage_round_task_model")
+    # For coverage table, treat OUT_OF_SCOPE separately
+    tmp.loc[tmp["scope_status"] == "OUT_OF_SCOPE", task_col] = "OUT_OF_SCOPE"
+    tmp.loc[tmp["scope_status"] == "UNKNOWN", task_col] = "UNKNOWN"
 
-    anom = cov_rtm[
-        (cov_rtm["scope_status"] != "IN_SCOPE")
-        | (cov_rtm["task_canon"].isin(["UNKNOWN", "OUT_OF_SCOPE"]))
-        | (cov_rtm["model_mlc_canon"] == "UNKNOWN")
-    ].copy()
-
-    if anom.empty:
-        print("OK: Keine Anomalien in Round×Task×Model (nur IN_SCOPE + kanonische Modelle).")
-    else:
-        _print_df(anom, verbose=verbose, max_rows=30, title="Anomalien (scope!=IN_SCOPE oder UNKNOWN/OUT_OF_SCOPE):")
-
-    _sec("B3) Metric Coverage (auf IN_SCOPE + latency Basis)")
-
-    subsets = get_analysis_subsets(df)
-    base = subsets.get("DS_LATENCY")
-    if base is None or base.empty:
-        base = df[(df["scope_status"] == "IN_SCOPE") & (df.get("latency_us").notna())].copy()
-
-    for metric in ["energy_uj", "power_mw", "accuracy", "auc"]:
-        covm = metric_coverage_by_round_task(base, metric)
-        _write_csv(covm, tables_dir / f"coverage_{metric}_by_round_task.csv", f"coverage_{metric}_by_round_task")
-
-        total_rows = int(covm["rows"].sum()) if "rows" in covm.columns else 0
-        total_with = int(covm["rows_with_metric"].sum()) if "rows_with_metric" in covm.columns else 0
-        share = (total_with / total_rows) if total_rows > 0 else 0.0
-        print(f"Metric: {metric} | rows_with_metric={total_with}/{total_rows} | share={share:.3f}")
-
-        if share > 0 or verbose:
-            if verbose:
-                _print_df(covm, verbose=True)
-            else:
-                top = covm.sort_values("share_metric", ascending=False).head(8)
-                _print_df(top, verbose=True, title="Top share_metric:")
+    ct = pd.crosstab(tmp["round"], tmp[task_col]).reset_index()
+    return ct
 
 
-def _unknown_summary(df: pd.DataFrame, tables_dir: Path) -> None:
-    _sec("B4) UNKNOWN Summary by Round")
-    summ = unknown_summary_by_round(df)
-    _print_df(summ, verbose=True)
-    _write_csv(summ, tables_dir / "unknown_summary_by_round.csv", "unknown_summary_by_round")
+def _metric_coverage(df: pd.DataFrame, metric: str) -> Tuple[int, int, float]:
+    # Coverage on IN_SCOPE only (as in your console output)
+    scope = _normalize_scope_status(df["scope_status"])
+    dfi = df.loc[scope == "IN_SCOPE"].copy()
+
+    if metric not in dfi.columns:
+        return (0, len(dfi), 0.0)
+
+    m = pd.to_numeric(dfi[metric], errors="coerce")
+    rows_with = int(m.notna().sum())
+    rows_total = len(dfi)
+    share = float(rows_with / rows_total) if rows_total else 0.0
+    return rows_with, rows_total, share
 
 
-def _duplicates_check(df: pd.DataFrame, *, verbose: bool) -> None:
-    _sec("D) Duplikat-Checks")
+def _missingness_table(df: pd.DataFrame, metrics: List[str]) -> pd.DataFrame:
+    scope = _normalize_scope_status(df["scope_status"])
+    dfi = df.loc[scope == "IN_SCOPE"].copy()
 
-    preferred = ["public_id", "round", "system_name", "host_processor_frequency", "model_mlc"]
-    key = [c for c in preferred if c in df.columns]
-    if len(key) < 3:
-        fallback = ["public_id", "round", "model_mlc_effective", "model_mlc_canon"]
-        key = [c for c in fallback if c in df.columns]
+    rows = []
+    for m in metrics:
+        if m not in dfi.columns:
+            rows.append({"metric": m, "share_na": 1.0})
+            continue
+        s = pd.to_numeric(dfi[m], errors="coerce")
+        rows.append({"metric": m, "share_na": float(s.isna().mean())})
+    return pd.DataFrame(rows).sort_values("share_na", ascending=False)
 
+
+def _plausibility_summary(df: pd.DataFrame, metric: str) -> Optional[str]:
+    scope = _normalize_scope_status(df["scope_status"])
+    dfi = df.loc[scope == "IN_SCOPE"].copy()
+    if metric not in dfi.columns:
+        return None
+    s = pd.to_numeric(dfi[metric], errors="coerce").dropna()
+    if s.empty:
+        return None
+    q = s.quantile([0.0, 0.5, 1.0])
+    return f"{metric}: min={q.loc[0.0]:g}, median={q.loc[0.5]:.3g}, max={q.loc[1.0]:g}"
+
+
+def _unit_safety_latency_us(df: pd.DataFrame) -> str:
+    scope = _normalize_scope_status(df["scope_status"])
+    dfi = df.loc[scope == "IN_SCOPE"].copy()
+
+    if "latency_us" not in dfi.columns:
+        return "WARN: latency_us fehlt."
+
+    s = pd.to_numeric(dfi["latency_us"], errors="coerce").dropna()
+    if s.empty:
+        return "WARN: latency_us leer."
+
+    p50 = float(s.quantile(0.50))
+    p95 = float(s.quantile(0.95))
+    p99 = float(s.quantile(0.99))
+
+    # Heuristik: latency_us sollte typischerweise im Bereich 1e2..1e7 liegen
+    if not (1e2 <= p50 <= 1e7 and 1e2 <= p95 <= 1e7 and 1e2 <= p99 <= 1e7):
+        return f"WARN: latency_us Skala auffällig (p50={p50:.3g}, p95={p95:.3g}, p99={p99:.3g})."
+    return f"OK: latency_us Skala plausibel (p50={p50:.3g}, p95={p95:.3g}, p99={p99:.3g})."
+
+
+def _duplicates_check(df: pd.DataFrame) -> int:
+    # minimal, robust key: only check if columns exist
+    key = ["public_id", "round", "system_name", "host_processor_frequency", "model_mlc"]
+    key = [c for c in key if c in df.columns]
     if not key:
-        print("WARN: Kein sinnvoller Key für Duplikat-Check gefunden (Spalten fehlen).")
-        return
-
-    dup = df.duplicated(subset=key, keep=False)
-    ndup = int(dup.sum())
-    print(f"Duplicate auf KEY {key}: {ndup}")
-
-    if ndup > 0 and verbose:
-        sample = df.loc[dup, key].head(20)
-        _print_df(sample, verbose=True, title="Beispiel-Duplikate (Top 20):")
-
-
-def _metric_plausibility(name: str, s: pd.Series, *, warn_max: float) -> None:
-    s = pd.to_numeric(s, errors="coerce")
-    if s.dropna().empty:
-        return
-    q = _quantiles(s, qs=(0.0, 0.5, 1.0))
-    print(f"\n{name}: min={q[0.0]:.3g}, median={q[0.5]:.3g}, max={q[1.0]:.3g}")
-    if (s <= 0).any():
-        print(f"FAIL: {name} enthält nicht-positive Werte (<=0).")
-    if q[1.0] > warn_max:
-        print(f"WARN: {name} max > {warn_max:.3g} (Ausreißer / Mapping prüfen).")
-
-
-def _missingness_plausibility(df: pd.DataFrame, *, verbose: bool) -> None:
-    _sec("C) Missingness & Plausibility (in_scope)")
-
-    in_scope = df[df["scope_status"] == "IN_SCOPE"].copy()
-    if in_scope.empty:
-        print("WARN: Keine IN_SCOPE Rows vorhanden – Missingness/Plausibility übersprungen.")
-        return
-
-    metrics = ["latency_us", "energy_uj", "power_mw", "accuracy", "auc"]
-    cols = [c for c in metrics if c in in_scope.columns]
-    if not cols:
-        print("WARN: Keine Metrikspalten gefunden.")
-        return
-
-    miss = in_scope[cols].isna().mean().sort_values(ascending=False)
-    miss_df = miss.reset_index()
-    miss_df.columns = ["metric", "share_na"]
-    _print_df(miss_df, verbose=True, title="Missingness (Anteil NA):")
-
-    for main in ["latency_us", "energy_uj"]:
-        if main in in_scope.columns:
-            print(f"{main} Not-NA: {int(in_scope[main].notna().sum())}")
-
-    lat = _safe_num(in_scope, "latency_us")
-    en = _safe_num(in_scope, "energy_uj")
-
-    _metric_plausibility("latency_us", lat, warn_max=1e8)
-    _metric_plausibility("energy_uj", en, warn_max=1e7)
-
-    _sec("C2) Unit-Safety Heuristik (ms→µs genau einmal)")
-    if not lat.dropna().empty:
-        q = _quantiles(lat, qs=(0.5, 0.95, 0.99))
-        p50, p95, p99 = q[0.5], q[0.95], q[0.99]
-        if p50 < 500 and p95 < 10_000:
-            print(
-                f"WARN: latency_us wirkt sehr klein (p50={p50:.3g}, p95={p95:.3g}). "
-                "Möglicherweise liegt noch ms vor (Konversion nicht angewendet)."
-            )
-        elif p50 > 1e7 or p99 > 1e9:
-            print(
-                f"WARN: latency_us wirkt sehr groß (p50={p50:.3g}, p99={p99:.3g}). "
-                "Möglicherweise wurde ms→µs doppelt konvertiert."
-            )
-        else:
-            print(f"OK: latency_us Skala plausibel (p50={p50:.3g}, p95={p95:.3g}, p99={p99:.3g}).")
-    else:
-        print("SKIP: latency_us hat keine Werte; Unit-Safety nicht prüfbar.")
-
-    if verbose:
-        _sec("C3) Extra Quantile (verbose)")
-        if not lat.dropna().empty:
-            print("latency_us quantiles:", _quantiles(lat, qs=(0.25, 0.5, 0.75, 0.95, 0.99)))
-        if not en.dropna().empty:
-            print("energy_uj quantiles:", _quantiles(en, qs=(0.25, 0.5, 0.75, 0.95, 0.99)))
-
-
-# ---------------------------
-# QA Gates for trend tables
-# ---------------------------
-def _trendtable_schema_gate(
-    tables_dir: Path,
-    *,
-    min_n: int,
-    strict: bool,
-    verbose: bool,
-) -> None:
-    """
-    Prüft, ob die Trendtabellen die erweiterten Spalten enthalten und plausibel sind.
-    """
-    _sec("H1) Trendtable Schema Gate (q10/q90/iqr/low_n)")
-
-    checks = [
-        ("trend_latency_us_round_task.csv", "latency_us", ["round", "task"]),
-        ("trend_energy_uj_round_task.csv", "energy_uj", ["round", "task"]),
-    ]
-
-    failures: List[str] = []
-
-    for filename, prefix, key_cols in checks:
-        path = tables_dir / filename
-        if not path.exists():
-            msg = f"FEHLT: {filename} (erwarte nach python -m src.eda)"
-            print("WARN:", msg)
-            failures.append(msg)
-            continue
-
-        df = pd.read_csv(path)
-
-        expected = set(
-            key_cols
-            + [
-                f"{prefix}_n",
-                f"{prefix}_median",
-                f"{prefix}_q25",
-                f"{prefix}_q75",
-                f"{prefix}_q10",
-                f"{prefix}_q90",
-                f"{prefix}_min",
-                f"{prefix}_max",
-                f"{prefix}_iqr",
-                f"{prefix}_low_n",
-            ]
-        )
-        missing = expected - set(df.columns)
-        if missing:
-            msg = f"{filename}: Missing columns: {sorted(missing)}"
-            print("WARN:", msg)
-            failures.append(msg)
-            continue
-
-        n = pd.to_numeric(df[f"{prefix}_n"], errors="coerce")
-        if n.isna().any():
-            msg = f"{filename}: {prefix}_n enthält NaN / nicht-numerisch"
-            print("WARN:", msg)
-            failures.append(msg)
-
-        low_norm = _boolish(df[f"{prefix}_low_n"])
-        if low_norm.isna().any():
-            msg = f"{filename}: {prefix}_low_n ist nicht vollständig bool-artig"
-            print("WARN:", msg)
-            failures.append(msg)
-
-        iqr = pd.to_numeric(df[f"{prefix}_iqr"], errors="coerce")
-        iqr_bad = iqr.dropna() < -1e-12
-        if iqr_bad.any():
-            msg = f"{filename}: {prefix}_iqr hat negative Werte (min={float(iqr.min()):.3g})"
-            print("WARN:", msg)
-            failures.append(msg)
-
-        # Quantile-Ordnung: q10 ≤ q25 ≤ median ≤ q75 ≤ q90
-        q10 = pd.to_numeric(df[f"{prefix}_q10"], errors="coerce")
-        q25 = pd.to_numeric(df[f"{prefix}_q25"], errors="coerce")
-        med = pd.to_numeric(df[f"{prefix}_median"], errors="coerce")
-        q75 = pd.to_numeric(df[f"{prefix}_q75"], errors="coerce")
-        q90 = pd.to_numeric(df[f"{prefix}_q90"], errors="coerce")
-        mn = pd.to_numeric(df[f"{prefix}_min"], errors="coerce")
-        mx = pd.to_numeric(df[f"{prefix}_max"], errors="coerce")
-
-        mask_core = q10.notna() & q25.notna() & med.notna() & q75.notna() & q90.notna()
-        if mask_core.any():
-            bad_core = (q10[mask_core] > q25[mask_core]) | (q25[mask_core] > med[mask_core]) | (
-                med[mask_core] > q75[mask_core]
-            ) | (q75[mask_core] > q90[mask_core])
-            if bad_core.any():
-                ex = df.loc[mask_core].loc[bad_core].head(5)[
-                    key_cols
-                    + [f"{prefix}_q10", f"{prefix}_q25", f"{prefix}_median", f"{prefix}_q75", f"{prefix}_q90"]
-                ]
-                print("WARN:", f"{filename}: Quantile-Reihenfolge verletzt. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: quantile order violated (core)")
-
-        mask_edges = mask_core & mn.notna() & mx.notna()
-        if mask_edges.any():
-            bad_edges = (mn[mask_edges] > q10[mask_edges]) | (q90[mask_edges] > mx[mask_edges])
-            if bad_edges.any():
-                ex = df.loc[mask_edges].loc[bad_edges].head(5)[key_cols + [f"{prefix}_min", f"{prefix}_q10", f"{prefix}_q90", f"{prefix}_max"]]
-                print("WARN:", f"{filename}: Randbedingungen verletzt. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: quantile order violated (edges)")
-
-        # low_n korrekt gemäß min_n?
-        m = n.notna() & low_norm.notna()
-        if m.any():
-            expected_low = (n[m].fillna(0).astype(int) < int(min_n)).astype(bool).values
-            got_low = low_norm[m].astype(bool).values
-            if np.any(expected_low != got_low):
-                msg = f"{filename}: {prefix}_low_n passt nicht zu min_n={min_n} (mind. ein mismatch)"
-                print("WARN:", msg)
-                failures.append(msg)
-
-        if verbose:
-            low_share = float(low_norm.astype("float").mean(skipna=True))
-            print(f"OK: {filename} geladen | rows={len(df)} | low_n_share~{low_share:.3f}")
-
-    if failures:
-        if strict:
-            raise SystemExit(2)
-        print("\nTrendtable Schema Gate: WARNINGS (kein Abbruch, da strict=False).")
-    else:
-        print("OK: Trendtabellen enthalten erwartete erweiterten Spalten und sind plausibel.")
-
-
-def _indexed_tables_gate(
-    tables_dir: Path,
-    *,
-    min_n: int,
-    strict: bool,
-    verbose: bool,
-    min_baseline_round: str = MIN_BASELINE_ROUND,
-) -> None:
-    """
-    QA-Gate für *_indexed.csv:
-    - Baseline-Round darf nicht vor min_baseline_round liegen (Option A -> v0.7)
-    - Pre-Baseline (round < baseline_round) muss Index-Spalten NaN haben
-    - Baseline-Row: median_index ~= 1.0 (wenn baseline exists)
-    - baseline_n >= min_n (wenn baseline exists)
-    """
-    _sec("H2) Indexed Tables Gate (Baseline ab v0.7, Pre-Baseline NaN)")
-
-    checks = [
-        ("trend_latency_us_round_task_indexed.csv", "latency_us", ["round", "task"]),
-        ("trend_energy_uj_round_task_indexed.csv", "energy_uj", ["round", "task"]),
-    ]
-
-    failures: List[str] = []
-    min_base_rank = _round_rank(min_baseline_round)
-
-    for filename, prefix, key_cols in checks:
-        path = tables_dir / filename
-        if not path.exists():
-            msg = f"FEHLT: {filename} (erwarte nach python -m src.eda)"
-            print("WARN:", msg)
-            failures.append(msg)
-            continue
-
-        df = pd.read_csv(path)
-
-        # required columns
-        required = set(
-            key_cols
-            + [
-                f"{prefix}_n",
-                f"{prefix}_median",
-                f"{prefix}_q25",
-                f"{prefix}_q75",
-                "baseline_round",
-                "baseline_n",
-                "baseline_median",
-                f"{prefix}_median_index",
-                f"{prefix}_q25_index",
-                f"{prefix}_q75_index",
-            ]
-        )
-        missing = required - set(df.columns)
-        if missing:
-            msg = f"{filename}: Missing columns: {sorted(missing)}"
-            print("WARN:", msg)
-            failures.append(msg)
-            continue
-
-        # ranks
-        rr = df["round"].map(_round_rank)
-        br = df["baseline_round"].astype(str).where(df["baseline_round"].notna(), np.nan)
-        br_rank = br.map(lambda x: _round_rank(x) if isinstance(x, str) and x != "nan" else np.nan)
-
-        # baseline policy: baseline >= min_baseline_round
-        mask_has_base = df["baseline_round"].notna() & df["baseline_median"].notna()
-        if mask_has_base.any():
-            bad_base = br_rank[mask_has_base] < min_base_rank
-            if bad_base.any():
-                ex = df.loc[mask_has_base].loc[bad_base].head(10)[key_cols + ["baseline_round", "baseline_n", "baseline_median"]]
-                print("WARN:", f"{filename}: baseline_round vor {min_baseline_round} gefunden. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: baseline_round < {min_baseline_round}")
-
-        # baseline_n >= min_n
-        bn = pd.to_numeric(df["baseline_n"], errors="coerce")
-        if mask_has_base.any():
-            bad_bn = bn[mask_has_base] < int(min_n)
-            if bad_bn.any():
-                ex = df.loc[mask_has_base].loc[bad_bn].head(10)[key_cols + ["baseline_round", "baseline_n"]]
-                print("WARN:", f"{filename}: baseline_n < min_n={min_n}. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: baseline_n < min_n")
-
-        # pre-baseline -> index cols must be NaN
-        idx_cols = [c for c in df.columns if c.endswith("_index") and c.startswith(prefix)]
-        pre = mask_has_base & (rr < br_rank)
-        if pre.any():
-            any_non_na = df.loc[pre, idx_cols].notna().any(axis=1)
-            if any_non_na.any():
-                ex = df.loc[pre].loc[any_non_na].head(10)[key_cols + ["baseline_round"] + idx_cols]
-                print("WARN:", f"{filename}: Pre-Baseline enthält nicht-NaN in Index-Spalten. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: pre-baseline has non-NaN index")
-
-        # v0.5 sanity: should be pre-baseline and thus NaN (wenn baseline exists)
-        mask_v05 = (df["round"].astype(str) == "v0.5") & mask_has_base
-        if mask_v05.any():
-            any_non_na_v05 = df.loc[mask_v05, idx_cols].notna().any(axis=1)
-            if any_non_na_v05.any():
-                ex = df.loc[mask_v05].loc[any_non_na_v05].head(10)[key_cols + ["baseline_round"] + idx_cols]
-                print("WARN:", f"{filename}: v0.5 hat Indexwerte obwohl Baseline existiert. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: v0.5 has non-NaN index")
-
-        # baseline row -> median_index approx 1.0 (tolerant)
-        # baseline row(s): round == baseline_round
-        is_base_row = mask_has_base & (df["round"].astype(str) == df["baseline_round"].astype(str))
-        if is_base_row.any():
-            med_idx = pd.to_numeric(df.loc[is_base_row, f"{prefix}_median_index"], errors="coerce")
-            bad = med_idx.notna() & (np.abs(med_idx - 1.0) > 1e-6)
-            if bad.any():
-                ex = df.loc[is_base_row].loc[bad].head(10)[key_cols + ["baseline_round", f"{prefix}_median_index", "baseline_median", f"{prefix}_median"]]
-                print("WARN:", f"{filename}: baseline row median_index != 1.0. Beispiele:\n{ex.to_string(index=False)}")
-                failures.append(f"{filename}: baseline row median_index != 1.0")
-
-        if verbose:
-            print(f"OK: {filename} geladen | rows={len(df)} | idx_cols={len(idx_cols)} | min_baseline_round={min_baseline_round}")
-
-    if failures:
-        if strict:
-            raise SystemExit(2)
-        print("\nIndexed Tables Gate: WARNINGS (kein Abbruch, da strict=False).")
-    else:
-        print(f"OK: *_indexed.csv erfüllen Baseline-Policy (>= {min_baseline_round}) und Pre-Baseline=NaN.")
-
-
-# ---------------------------
-# Misc checks
-# ---------------------------
-def _clustering_sanity(reports_dir: Path) -> None:
-    _sec("F) Clustering-Sanity-Check (hardware_clusters.csv)")
-
-    p1 = reports_dir / "tables" / "hardware_clusters.csv"
-    p2 = reports_dir / "hardware_clusters.csv"
-    path = p1 if p1.exists() else (p2 if p2.exists() else None)
-
-    if path is None:
-        print("INFO: hardware_clusters.csv nicht vorhanden – übersprungen.")
-        return
-
-    df = pd.read_csv(path)
-    print(f"hardware_clusters.csv gefunden: {path} ({len(df)} rows)")
-    if "cluster_id" in df.columns:
-        print(f"cluster_id unique: {df['cluster_id'].nunique(dropna=False)}")
-    else:
-        print("WARN: Spalte 'cluster_id' fehlt.")
-
-
-# ---------------------------
-# Baseline freeze/diff
-# ---------------------------
-def _baseline_freeze(
-    baseline_dir: Path,
-    tables_dir: Path,
-    figures_dir: Path,
-    parquet_path: Path,
-) -> None:
-    baseline_dir.mkdir(parents=True, exist_ok=True)
-    meta = {"created_at": datetime.now().isoformat(timespec="seconds"), "parquet": str(parquet_path).replace("\\", "/")}
-    _save_json(baseline_dir / "meta.json", meta)
-
-    tables_entries = _manifest_for_dir(tables_dir, ("*.csv",))
-    figures_entries = _manifest_for_dir(figures_dir, ("*.png", "*.svg"))
-
-    _save_json(baseline_dir / "tables_manifest.json", _entries_to_dict(tables_entries))
-    _save_json(baseline_dir / "figures_manifest.json", _entries_to_dict(figures_entries))
-
-    print(f"OK: Baseline eingefroren in: {baseline_dir}")
-
-
-def _baseline_diff(baseline_dir: Path, tables_dir: Path, figures_dir: Path) -> None:
-    _sec("E) Reports/Tables Diff (gegen Baseline)")
-
-    meta_p = baseline_dir / "meta.json"
-    tab_p = baseline_dir / "tables_manifest.json"
-    fig_p = baseline_dir / "figures_manifest.json"
-
-    if not (meta_p.exists() and tab_p.exists() and fig_p.exists()):
-        print("WARN: Baseline nicht vollständig vorhanden (meta.json / tables_manifest.json / figures_manifest.json fehlt).")
-        print("-> Baseline einfrieren: python -m src.checks --freeze-baseline")
-        return
-
-    base_tables = _load_json(tab_p)
-    base_figs = _load_json(fig_p)
-
-    curr_tables = _entries_to_dict(_manifest_for_dir(tables_dir, ("*.csv",)))
-    curr_figs = _entries_to_dict(_manifest_for_dir(figures_dir, ("*.png", "*.svg")))
-
-    dt = _diff_manifests(base_tables, curr_tables)
-    df = _diff_manifests(base_figs, curr_figs)
-
-    print(
-        f"Tables: same={len(dt['same'])} | changed={len(dt['changed'])} | "
-        f"missing_baseline={len(dt['missing_baseline'])} | missing_current={len(dt['missing_current'])}"
-    )
-
-    if dt["missing_baseline"]:
-        print("\nMISSING in Baseline (neu):")
-        for p in dt["missing_baseline"]:
-            print(f" - {Path(p).name}")
-
-    if dt["missing_current"]:
-        print("\nMISSING aktuell (fehlend ggü. Baseline):")
-        for p in dt["missing_current"]:
-            print(f" - {Path(p).name}")
-
-    if dt["changed"]:
-        print("\nCHANGED (ggü. Baseline):")
-        for p in dt["changed"][:15]:
-            print(f" - {Path(p).name}")
-        if len(dt["changed"]) > 15:
-            print(f"... ({len(dt['changed'])} changed total)")
-
-    _sec("G) Reports/Figures Präsenzcheck")
-    pngs = sorted(list(figures_dir.glob("*.png"))) if figures_dir.exists() else []
-    svgs = sorted(list(figures_dir.glob("*.svg"))) if figures_dir.exists() else []
-    print(f"PNG: {len(pngs)} | SVG: {len(svgs)}")
-    if pngs:
-        print("Top PNGs:", ", ".join([p.name for p in pngs[:3]]))
+        return 0
+    return int(df.duplicated(subset=key).sum())
 
 
 def run_checks(
     parquet_path: Path,
-    reports_dir: Path,
-    freeze_baseline: bool = False,
-    baseline_dir: Optional[Path] = None,
-    verbose: bool = False,
-    strict_trend_schema: bool = False,
-    strict_indexed_gate: bool = False,
-    min_n: int = 5,
+    tables_dir: Path,
+    figures_dir: Path,
+    baseline_dir: Path,
+    *,
+    strict_baseline_diff: bool = False,
 ) -> None:
-    tables_dir = reports_dir / "tables"
-    figures_dir = reports_dir / "figures"
-    baseline_dir = baseline_dir or (reports_dir / "baseline")
+    print("\nchecks: Validierung & Baseline-Abgleich")
+    print("=" * 60)
 
-    _hdr("checks: Validierung & Baseline-Abgleich")
+    df = _load_and_features(parquet_path)
 
-    df = _load_df(parquet_path)
+    # -----------------------------------------------------------------
+    # A) Scope checks
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("A) Scope-Checks (OUT_OF_SCOPE / IN_SCOPE / UNKNOWN)")
+    print("=" * 55)
 
-    _scope_checks(df, verbose=verbose)
-    _coverage_checks(df, tables_dir=tables_dir, verbose=verbose)
-    _unknown_summary(df, tables_dir=tables_dir)
-    _duplicates_check(df, verbose=verbose)
-    _missingness_plausibility(df, verbose=verbose)
+    stats = _scope_stats(df)
+    print(f"Rows total: {stats.rows_total}")
+    print(f"Rows in_scope: {stats.rows_in_scope} ({stats.rows_in_scope / max(stats.rows_total,1):.3f})")
+    print(f"Rows out_of_scope: {stats.rows_out_of_scope} ({stats.rows_out_of_scope / max(stats.rows_total,1):.3f})")
+    # UNKNOWN ohne OUT_OF_SCOPE
+    print(f"Rows UNKNOWN (ohne out_of_scope): {stats.rows_unknown} ({stats.rows_unknown / max(stats.rows_total,1):.3f})")
 
-    # QA-Gates für Trendtabellen
-    _trendtable_schema_gate(tables_dir, min_n=min_n, strict=strict_trend_schema, verbose=verbose)
-    _indexed_tables_gate(
-        tables_dir,
-        min_n=min_n,
-        strict=strict_indexed_gate,
-        verbose=verbose,
-        min_baseline_round=MIN_BASELINE_ROUND,
-    )
+    causes = _scope_unknown_causes(df)
+    if not causes.empty:
+        print("\nUNKNOWN Ursachen (model_mlc_source):")
+        for k, v in causes.items():
+            print(f"  - {k}: {v}")
 
-    _clustering_sanity(reports_dir)
+    # -----------------------------------------------------------------
+    # B) Coverage checks
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("B) Coverage-Checks (Round × Task)")
+    print("=" * 55)
 
-    if freeze_baseline:
-        _baseline_freeze(baseline_dir, tables_dir, figures_dir, parquet_path)
+    cov = _coverage_round_task(df)
+    print(cov.to_string(index=False))
 
-    _baseline_diff(baseline_dir, tables_dir, figures_dir)
+    # Export coverage table
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    cov_path = tables_dir / "coverage_round_task_all.csv"
+    cov.to_csv(cov_path, index=False)
+    print(f"[table] coverage_round_task_all: {len(cov)} rows -> {cov_path}")
+
+    # -----------------------------------------------------------------
+    # B3) Metric coverage (minimal)
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("B3) Metric Coverage (auf IN_SCOPE + latency Basis)")
+    print("=" * 55)
+
+    for metric in ["energy_uj", "power_mw", "accuracy", "auc"]:
+        rows_with, rows_total, share = _metric_coverage(df, metric)
+        print(f"Metric: {metric} | rows_with_metric={rows_with}/{rows_total} | share={share:.3f}")
+
+    # -----------------------------------------------------------------
+    # D) Duplicate check
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("D) Duplikat-Checks")
+    print("=" * 55)
+
+    dup_n = _duplicates_check(df)
+    print(f"Duplicate count: {dup_n}")
+
+    # -----------------------------------------------------------------
+    # C) Missingness & plausibility
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("C) Missingness & Plausibility (in_scope)")
+    print("=" * 55)
+
+    miss = _missingness_table(df, metrics=["power_mw", "auc", "accuracy", "energy_uj", "latency_us"])
+    print("Missingness (Anteil NA):")
+    print(miss.to_string(index=False))
+
+    # Not-NA counts
+    scope = _normalize_scope_status(df["scope_status"])
+    dfi = df.loc[scope == "IN_SCOPE"].copy()
+    if "latency_us" in dfi.columns:
+        print(f"latency_us Not-NA: {pd.to_numeric(dfi['latency_us'], errors='coerce').notna().sum()}")
+    if "energy_uj" in dfi.columns:
+        print(f"energy_uj Not-NA: {pd.to_numeric(dfi['energy_uj'], errors='coerce').notna().sum()}")
+
+    for metric in ["latency_us", "energy_uj"]:
+        summ = _plausibility_summary(df, metric)
+        if summ:
+            print("\n" + summ)
+
+    # -----------------------------------------------------------------
+    # C2) Unit-safety (ms->us once)
+    # -----------------------------------------------------------------
+    print("\n" + "=" * 55)
+    print("C2) Unit-Safety Heuristik (ms→µs genau einmal)")
+    print("=" * 55)
+    print(_unit_safety_latency_us(df))
+
+    # -----------------------------------------------------------------
+    # E/G) Release-Checks (nur bei --strict-baseline-diff)
+    # -----------------------------------------------------------------
+    if strict_baseline_diff:
+        meta_p, tab_p, fig_p, _baseline_tables_dir = _baseline_paths(baseline_dir)
+
+        # -----------------------------------------------------------------
+        # E) Baseline diff
+        # -----------------------------------------------------------------
+        print("\n" + "=" * 55)
+        print("E) Reports/Tables Diff (gegen Baseline)")
+        print("=" * 55)
+
+        if not (meta_p.exists() and tab_p.exists() and fig_p.exists()):
+            print(
+                "FAIL: Baseline nicht vollständig vorhanden (meta.json / tables_manifest.json / figures_manifest.json fehlt).\n"
+                "-> Baseline einfrieren: python -m src.checks --freeze-baseline --baseline-dir <DIR>"
+            )
+            raise SystemExit(2)
+
+        baseline_tables = json.loads(tab_p.read_text(encoding="utf-8"))
+        baseline_figures = json.loads(fig_p.read_text(encoding="utf-8"))
+
+        cur_tables = {p.name: _sha256_of_file(p) for p in _collect_files(tables_dir, (".csv",))}
+        cur_figures = {p.name: _sha256_of_file(p) for p in _collect_files(figures_dir, (".png", ".svg"))}
+
+        # Tables diff
+        same = [k for k in cur_tables.keys() if k in baseline_tables and cur_tables[k] == baseline_tables[k]]
+        changed = [k for k in cur_tables.keys() if k in baseline_tables and cur_tables[k] != baseline_tables[k]]
+        missing_baseline = [k for k in cur_tables.keys() if k not in baseline_tables]
+        missing_current = [k for k in baseline_tables.keys() if k not in cur_tables]
+
+        print(
+            f"Tables: same={len(same)} | changed={len(changed)} | "
+            f"missing_baseline={len(missing_baseline)} | missing_current={len(missing_current)}"
+        )
+
+        if changed:
+            print("\nCHANGED (ggü. Baseline):")
+            for k in changed[:50]:
+                print(f"- {k} (baseline={baseline_tables[k][:12]}..., current={cur_tables[k][:12]}...)")
+
+        if missing_baseline:
+            print("\nMISSING in Baseline (neu):")
+            for k in missing_baseline[:50]:
+                print(f"- {k}")
+
+        if missing_current:
+            print("\nMISSING in Current (Baseline hat mehr):")
+            for k in missing_current[:50]:
+                print(f"- {k}")
+
+        # Figures diff (kurz)
+        same_f = [k for k in cur_figures.keys() if k in baseline_figures and cur_figures[k] == baseline_figures[k]]
+        changed_f = [k for k in cur_figures.keys() if k in baseline_figures and cur_figures[k] != baseline_figures[k]]
+        missing_baseline_f = [k for k in cur_figures.keys() if k not in baseline_figures]
+        missing_current_f = [k for k in baseline_figures.keys() if k not in cur_figures]
+
+        print(
+            f"Figures: same={len(same_f)} | changed={len(changed_f)} | "
+            f"missing_baseline={len(missing_baseline_f)} | missing_current={len(missing_current_f)}"
+        )
+
+        if changed_f:
+            print("\nCHANGED Figures (ggü. Baseline):")
+            for k in changed_f[:50]:
+                print(f"- {k} (baseline={baseline_figures[k][:12]}..., current={cur_figures[k][:12]}...)")
+
+        if missing_baseline_f:
+            print("\nMISSING Figures in Baseline (neu):")
+            for k in missing_baseline_f[:50]:
+                print(f"- {k}")
+
+        if missing_current_f:
+            print("\nMISSING Figures in Current (Baseline hat mehr):")
+            for k in missing_current_f[:50]:
+                print(f"- {k}")
+
+        # Strict-Fail, sobald irgendein Diff existiert
+        if changed or missing_baseline or missing_current or changed_f or missing_baseline_f or missing_current_f:
+            print("FAIL: Baseline-Diff erkannt. Wenn Änderung beabsichtigt: --freeze-baseline ausführen und committen.")
+            raise SystemExit(2)
+
+        # -----------------------------------------------------------------
+        # G) Figures presence check
+        # -----------------------------------------------------------------
+        print("\n" + "=" * 55)
+        print("G) Reports/Figures Präsenzcheck")
+        print("=" * 55)
+
+        pngs = _collect_files(figures_dir, (".png",))
+        svgs = _collect_files(figures_dir, (".svg",))
+        print(f"PNG: {len(pngs)} | SVG: {len(svgs)}")
+
+        if pngs:
+            print("\nTop PNGs:")
+            for p in pngs[:10]:
+                print(f"- {p.name}")
+    else:
+        print("\n" + "=" * 55)
+        print("E/G) Baseline-Diff & Figures-Checks: übersprungen")
+        print("=" * 55)
+        print("Hinweis: Aktivieren mit --strict-baseline-diff (oder Baseline aktualisieren via --freeze-baseline).")
 
     print("\nChecks abgeschlossen.")
 
 
-def main(argv: Optional[List[str]] = None) -> None:
-    parser = argparse.ArgumentParser(description="Validation & baseline checks for MLPerf-Tiny EDA pipeline.")
-    parser.add_argument("--parquet", type=Path, default=PARQUET_DEFAULT, help="Path to consolidated parquet")
-    parser.add_argument("--reports-dir", type=Path, default=REPORTS_DIR_DEFAULT, help="Reports directory")
-    parser.add_argument("--baseline-dir", type=Path, default=BASELINE_DIR_DEFAULT, help="Baseline directory")
-    parser.add_argument("--freeze-baseline", action="store_true", help="Freeze current reports as baseline")
-    parser.add_argument("--verbose", action="store_true", help="Print full tables / extra diagnostics to console")
-
-    parser.add_argument("--min-n", type=int, default=5, help="Low-n threshold used in trend schema checks")
-    parser.add_argument("--strict-trend-schema", action="store_true", help="Exit non-zero if trend schema gate fails")
-    parser.add_argument("--strict-indexed-gate", action="store_true", help="Exit non-zero if indexed tables gate fails")
-
-    args = parser.parse_args(argv)
-
-    run_checks(
-        parquet_path=args.parquet,
-        reports_dir=args.reports_dir,
-        freeze_baseline=args.freeze_baseline,
-        baseline_dir=args.baseline_dir,
-        verbose=args.verbose,
-        strict_trend_schema=args.strict_trend_schema,
-        strict_indexed_gate=args.strict_indexed_gate,
-        min_n=args.min_n,
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run validation checks & baseline diff for MLPerf-Tiny EDA pipeline.")
+    parser.add_argument("--parquet", type=str, default=str(PARQUET_PATH), help="Path to interim parquet")
+    parser.add_argument("--tables-dir", type=str, default=str(TABLES_DIR), help="reports/tables directory")
+    parser.add_argument("--figures-dir", type=str, default=str(FIGURES_DIR), help="reports/figures directory")
+    parser.add_argument("--baseline-dir", type=str, default=str(BASELINE_DIR_DEFAULT), help="docs/baseline directory")
+    parser.add_argument(
+        "--strict-baseline-diff",
+        action="store_true",
+        help="Führt Baseline-Diff (Tables/Figures) aus und bricht bei Abweichungen mit Exit-Code 2 ab.",
     )
+
+    parser.add_argument(
+        "--set-baseline",
+        "--freeze-baseline",
+        dest="set_baseline",
+        action="store_true",
+        help="Baseline einfrieren (Manifeste + Meta aus aktuellen reports/ schreiben)",
+    )
+
+    args = parser.parse_args()
+
+    parquet_path = Path(args.parquet)
+    tables_dir = Path(args.tables_dir)
+    figures_dir = Path(args.figures_dir)
+    baseline_dir = Path(args.baseline_dir)
+
+    if args.set_baseline:
+        freeze_baseline(tables_dir=tables_dir, figures_dir=figures_dir, baseline_dir=baseline_dir)
+        return 0
+
+    run_checks(parquet_path, tables_dir, figures_dir, baseline_dir, strict_baseline_diff=args.strict_baseline_diff)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

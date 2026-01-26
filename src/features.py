@@ -101,10 +101,95 @@ def _canon_model(raw: object) -> str:
     return "UNKNOWN"
 
 
+# -----------------------------
+# FF1b / FF1c: minimal robuste Heuristiken
+# -----------------------------
+_WS_RE = re.compile(r"\s+")
+_FREQ_RE = re.compile(r"([0-9]+(?:[.,][0-9]+)?)\s*(GHZ|MHZ)?", re.IGNORECASE)
+
+
+def _norm_str(x: object) -> str:
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return ""
+    return _WS_RE.sub(" ", str(x).strip())
+
+
+def _infer_processor_family(processor_raw: object) -> str:
+    s = _norm_str(processor_raw).upper()
+    if not s:
+        return "UNKNOWN"
+    if "CORTEX-M" in s or "CORTEX M" in s:
+        return "Cortex-M"
+    if "CORTEX-A" in s or "CORTEX A" in s:
+        return "Cortex-A"
+    if "RISC-V" in s or "RISCV" in s or "RISC V" in s:
+        return "RISC-V"
+    if "XTENSA" in s:
+        return "Xtensa"
+    return "OTHER"
+
+
+def _parse_freq_mhz(freq_raw: object) -> float:
+    s = _norm_str(freq_raw)
+    if not s:
+        return float("nan")
+    m = _FREQ_RE.search(s)
+    if not m:
+        return float("nan")
+    val = float(m.group(1).replace(",", "."))
+    unit = (m.group(2) or "").upper()
+    if unit == "GHZ":
+        return val * 1000.0
+    return val  # default MHz
+
+
+def _bucket_freq_mhz(freq_mhz: float) -> str:
+    if pd.isna(freq_mhz):
+        return "UNKNOWN"
+    if freq_mhz < 100:
+        return "<100"
+    if freq_mhz < 200:
+        return "100-199"
+    if freq_mhz < 400:
+        return "200-399"
+    return ">=400"
+
+
+def _infer_software_flags(software_raw: object) -> Dict[str, bool]:
+    s = _norm_str(software_raw).upper()
+    return {
+        "sw_cmsis_nn": ("CMSIS" in s),
+        "sw_tflm": ("TFLM" in s) or ("TENSORFLOW LITE MICRO" in s) or ("TFLITE MICRO" in s),
+        "sw_tvm": ("TVM" in s) or ("MICROTVM" in s),
+        "sw_onnx": ("ONNX" in s),
+    }
+
+
+def _infer_software_stack(software_raw: object) -> str:
+    flags = _infer_software_flags(software_raw)
+    if flags["sw_cmsis_nn"]:
+        return "CMSIS"
+    if flags["sw_tflm"]:
+        return "TFLM"
+    if flags["sw_tvm"]:
+        return "TVM"
+    if flags["sw_onnx"]:
+        return "ONNX"
+    if _norm_str(software_raw) == "":
+        return "UNKNOWN"
+    return "OTHER"
+
+
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Ergänzt kanonische Task-/Model-/Scope-Spalten.
     OUT_OF_SCOPE (1D-DS-CNN) wird explizit überschrieben.
+
+    Erweiterung (FF1b/FF1c):
+      - accelerator_present
+      - processor_family
+      - cpu_freq_mhz + cpu_freq_bucket
+      - software_stack + sw_* Flags
     """
     out = df.copy()
 
@@ -148,6 +233,43 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     out.loc[is_1d, "out_of_scope"] = True
     out.loc[is_1d, "task_canon"] = "OUT_OF_SCOPE"
     out.loc[is_1d, "scope_status"] = "OUT_OF_SCOPE"
+
+    # -----------------------------
+    # FF1b: Hardware features (minimal)
+    # -----------------------------
+    if "accelerator" in out.columns:
+        out["accelerator_present"] = out["accelerator"].apply(lambda x: _norm_str(x) != "")
+    else:
+        out["accelerator_present"] = False
+
+    if "processor" in out.columns:
+        out["processor_family"] = out["processor"].apply(_infer_processor_family)
+    else:
+        out["processor_family"] = "UNKNOWN"
+
+    if "host_processor_frequency" in out.columns:
+        out["cpu_freq_mhz"] = out["host_processor_frequency"].apply(_parse_freq_mhz)
+        out["cpu_freq_bucket"] = out["cpu_freq_mhz"].apply(_bucket_freq_mhz)
+    else:
+        out["cpu_freq_mhz"] = np.nan
+        out["cpu_freq_bucket"] = "UNKNOWN"
+
+    # -----------------------------
+    # FF1c: Software features (minimal)
+    # -----------------------------
+    if "software" in out.columns:
+        flags = out["software"].apply(_infer_software_flags)
+        out["sw_cmsis_nn"] = flags.apply(lambda d: bool(d["sw_cmsis_nn"]))
+        out["sw_tflm"] = flags.apply(lambda d: bool(d["sw_tflm"]))
+        out["sw_tvm"] = flags.apply(lambda d: bool(d["sw_tvm"]))
+        out["sw_onnx"] = flags.apply(lambda d: bool(d["sw_onnx"]))
+        out["software_stack"] = out["software"].apply(_infer_software_stack)
+    else:
+        out["sw_cmsis_nn"] = False
+        out["sw_tflm"] = False
+        out["sw_tvm"] = False
+        out["sw_onnx"] = False
+        out["software_stack"] = "UNKNOWN"
 
     return out
 

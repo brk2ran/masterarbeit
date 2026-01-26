@@ -1,68 +1,19 @@
 {
-  "reports/tables/coverage_accuracy_by_round_task.csv": {
-    "name": "coverage_accuracy_by_round_task.csv",
-    "relpath": "reports/tables/coverage_accuracy_by_round_task.csv",
-    "bytes": 487,
-    "sha256": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd"
-  },
-  "reports/tables/coverage_auc_by_round_task.csv": {
-    "name": "coverage_auc_by_round_task.csv",
-    "relpath": "reports/tables/coverage_auc_by_round_task.csv",
-    "bytes": 487,
-    "sha256": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd"
-  },
-  "reports/tables/coverage_energy_uj_by_round_task.csv": {
-    "name": "coverage_energy_uj_by_round_task.csv",
-    "relpath": "reports/tables/coverage_energy_uj_by_round_task.csv",
-    "bytes": 744,
-    "sha256": "c8764b94d4e6c01b17d8baa71ab889b28effbd5cebdee4b88ba7b8cbcfd47d2c"
-  },
-  "reports/tables/coverage_power_mw_by_round_task.csv": {
-    "name": "coverage_power_mw_by_round_task.csv",
-    "relpath": "reports/tables/coverage_power_mw_by_round_task.csv",
-    "bytes": 487,
-    "sha256": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd"
-  },
-  "reports/tables/coverage_round_task_all.csv": {
-    "name": "coverage_round_task_all.csv",
-    "relpath": "reports/tables/coverage_round_task_all.csv",
-    "bytes": 171,
-    "sha256": "29635dbdd29ffe4f61eb9ab5be4e633a248c06a0fc5b42fe3f53c43f2f9a8960"
-  },
-  "reports/tables/coverage_round_task_model.csv": {
-    "name": "coverage_round_task_model.csv",
-    "relpath": "reports/tables/coverage_round_task_model.csv",
-    "bytes": 861,
-    "sha256": "4a2967700f39b8d2a9f0f5d0c4b3b7a4e6a02d653ee0ec3783d65dfd251c8e7e"
-  },
-  "reports/tables/trend_energy_uj_round_task.csv": {
-    "name": "trend_energy_uj_round_task.csv",
-    "relpath": "reports/tables/trend_energy_uj_round_task.csv",
-    "bytes": 2357,
-    "sha256": "bc8107935301e9a35d9e89c35d9c4826783ae0f4d0574f8292debaad6a78d456"
-  },
-  "reports/tables/trend_energy_uj_round_task_indexed.csv": {
-    "name": "trend_energy_uj_round_task_indexed.csv",
-    "relpath": "reports/tables/trend_energy_uj_round_task_indexed.csv",
-    "bytes": 5011,
-    "sha256": "42717f85001f5330f6cfc62559994f0da63a242d5c5c60342e86b1ae6e010c17"
-  },
-  "reports/tables/trend_latency_us_round_task.csv": {
-    "name": "trend_latency_us_round_task.csv",
-    "relpath": "reports/tables/trend_latency_us_round_task.csv",
-    "bytes": 2530,
-    "sha256": "88e6c8311da8107d0150131121d4cb4e33b97182d93c5b4d21a8092900890fb9"
-  },
-  "reports/tables/trend_latency_us_round_task_indexed.csv": {
-    "name": "trend_latency_us_round_task_indexed.csv",
-    "relpath": "reports/tables/trend_latency_us_round_task_indexed.csv",
-    "bytes": 4969,
-    "sha256": "18d7d602c0aa5fd3b61a51e1ce1d0c94317c935dd9f1717207b5ab1b8330f54a"
-  },
-  "reports/tables/unknown_summary_by_round.csv": {
-    "name": "unknown_summary_by_round.csv",
-    "relpath": "reports/tables/unknown_summary_by_round.csv",
-    "bytes": 188,
-    "sha256": "020016d7a0b5ac2418be78c2c46f6954544bfc32776ebe841088ebababfbfefe"
-  }
+  "coverage_accuracy_by_round_task.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_auc_by_round_task.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_energy_uj_by_round_task.csv": "c8764b94d4e6c01b17d8baa71ab889b28effbd5cebdee4b88ba7b8cbcfd47d2c",
+  "coverage_power_mw_by_round_task.csv": "bf481f8258803c72c9238aa75055197b87c2663ff1fb3ec2875c4bccbc907efd",
+  "coverage_round_task_all.csv": "10a2a2e731acfde716e85f160021933f88838a86d8ac776add3321404b4cf967",
+  "coverage_round_task_model.csv": "4a2967700f39b8d2a9f0f5d0c4b3b7a4e6a02d653ee0ec3783d65dfd251c8e7e",
+  "trend_energy_uj_round_task.csv": "bc8107935301e9a35d9e89c35d9c4826783ae0f4d0574f8292debaad6a78d456",
+  "trend_energy_uj_round_task_accelerator_present.csv": "d68b6e7c4ab93afa29b8afcb0098832c38e682e1e302b294935c38f0a9b4a9ac",
+  "trend_energy_uj_round_task_indexed.csv": "42717f85001f5330f6cfc62559994f0da63a242d5c5c60342e86b1ae6e010c17",
+  "trend_energy_uj_round_task_processor_family.csv": "900c3943554c585804143e20fd20b006ed76ea6409cf5fae594789765a9180f1",
+  "trend_energy_uj_round_task_software_stack.csv": "f25c63dec6aa167b16cd6db26bd1db5aee586d54553fdcf9f7ab89756e155992",
+  "trend_latency_us_round_task.csv": "88e6c8311da8107d0150131121d4cb4e33b97182d93c5b4d21a8092900890fb9",
+  "trend_latency_us_round_task_accelerator_present.csv": "4df199867346d9420639f965c365ef307a44b42740956d50828c34b752ee550a",
+  "trend_latency_us_round_task_indexed.csv": "18d7d602c0aa5fd3b61a51e1ce1d0c94317c935dd9f1717207b5ab1b8330f54a",
+  "trend_latency_us_round_task_processor_family.csv": "624381effa0b202982b7ab26a9c1525bc6d259bb64b6567d3c468b205b5f4147",
+  "trend_latency_us_round_task_software_stack.csv": "741b59fb95f494e69f0b00f6353e6d446ec186b01169e275773aad24bb4e67b7",
+  "unknown_summary_by_round.csv": "020016d7a0b5ac2418be78c2c46f6954544bfc32776ebe841088ebababfbfefe"
 }
