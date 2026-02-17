@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -9,8 +10,6 @@ import pandas as pd
 
 ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
 CORE_TASKS = ["AD", "IC", "KWS", "VWW"]
-
-# Option A: Baseline-Kandidaten erst ab dieser Round zulassen
 MIN_BASELINE_ROUND = "v0.7"
 
 
@@ -24,6 +23,11 @@ def _round_rank(r: str) -> int:
 def _ensure_dirs(*paths: Path) -> None:
     for p in paths:
         p.mkdir(parents=True, exist_ok=True)
+
+
+def _write_table(df: pd.DataFrame, out_path: Path, tag: str) -> None:
+    df.to_csv(out_path, index=False)
+    print(f"[table] {tag}: {len(df)} rows -> {out_path}")
 
 
 def _task_label(row: pd.Series) -> str:
@@ -43,11 +47,6 @@ def _task_label(row: pd.Series) -> str:
         return "UNKNOWN"
 
     return str(task_canon)
-
-
-def _write_table(df: pd.DataFrame, out_path: Path, tag: str) -> None:
-    df.to_csv(out_path, index=False)
-    print(f"[table] {tag}: {len(df)} rows -> {out_path}")
 
 
 def _coverage_round_task_all(df: pd.DataFrame) -> pd.DataFrame:
@@ -163,14 +162,13 @@ def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame
 def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_col: str) -> pd.DataFrame:
     """
     FF1b/FF1c: Trendtabellen für IN_SCOPE + CORE_TASKS zusätzlich nach Faktor.
-    (Minimal: deskriptiv, keine Modellierung)
+    Minimal deskriptiv (keine Modellierung).
     """
     tmp = df.copy()
 
     if factor_col not in tmp.columns:
         tmp[factor_col] = "UNKNOWN"
 
-    # NaNs in Faktor explizit labeln, damit grouping stabil ist
     tmp[factor_col] = tmp[factor_col].astype("object").where(tmp[factor_col].notna(), "UNKNOWN")
 
     tmp = tmp[
@@ -198,7 +196,11 @@ def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_c
 
     g["round_rank"] = g["round"].map(_round_rank)
     g["task_rank"] = g["task_canon"].map({t: i for i, t in enumerate(CORE_TASKS)})
-    g = g.sort_values(["round_rank", "task_rank", factor_col]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    g = (
+        g.sort_values(["round_rank", "task_rank", factor_col])
+        .drop(columns=["round_rank", "task_rank"])
+        .reset_index(drop=True)
+    )
 
     g = g.rename(
         columns={
@@ -222,12 +224,6 @@ def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_c
 def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
     """
     Option A: Baseline-Kandidaten erst ab MIN_BASELINE_ROUND zulassen.
-
-    Baseline pro Metrik×Task:
-      - erste Round (nach ROUND_ORDER) mit n>=min_n und median vorhanden
-      - ABER nur für Rounds mit round_rank >= round_rank(MIN_BASELINE_ROUND)
-
-    Pre-Baseline wird in Index-Spalten ausgeblendet (NaN), damit Plots/Checks nicht irritieren.
     """
     n_col = f"{metric}_n"
     med_col = f"{metric}_median"
@@ -241,7 +237,6 @@ def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataF
         g2["round_rank"] = g2["round"].map(_round_rank)
         g2 = g2.sort_values("round_rank")
 
-        # Option A: Baseline-Kandidaten ab MIN_BASELINE_ROUND
         base_row = g2[
             (g2["round_rank"] >= min_base_rank)
             & (g2[n_col] >= int(min_n))
@@ -272,10 +267,8 @@ def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataF
     out[f"{metric}_q10_index"] = safe_div(out[f"{metric}_q10"], out["baseline_median"])
     out[f"{metric}_q90_index"] = safe_div(out[f"{metric}_q90"], out["baseline_median"])
 
-    # Pre-Baseline ausblenden: round < baseline_round => Index-Spalten = NaN
     out["round_rank"] = out["round"].map(_round_rank)
     base_rank = out["baseline_round"].map(lambda r: _round_rank(r) if isinstance(r, str) else np.nan)
-
     out["pre_baseline"] = np.where(base_rank.notna() & (out["round_rank"] < base_rank), True, False)
 
     idx_cols = [
@@ -291,6 +284,261 @@ def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataF
     return out
 
 
+def _accel_effect_table(trend_factor: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    FF1b (Accelerator): Effekt pro Round×Task als Vergleich accelerator_present=True vs False.
+    """
+    med = f"{metric}_median"
+    ncol = f"{metric}_n"
+
+    df = trend_factor.copy()
+    if "accelerator_present" not in df.columns:
+        return df.iloc[0:0].copy()
+
+    df["accel"] = df["accelerator_present"].astype(str)
+    piv = df.pivot_table(
+        index=["round", "task"],
+        columns="accel",
+        values=[med, ncol],
+        aggfunc="first",
+    )
+
+    piv.columns = [f"{a}__{b}" for a, b in piv.columns]
+    piv = piv.reset_index()
+
+    m_t = piv.get(f"{med}__True")
+    m_f = piv.get(f"{med}__False")
+    n_t = piv.get(f"{ncol}__True")
+    n_f = piv.get(f"{ncol}__False")
+
+    out = piv[["round", "task"]].copy()
+    out[f"{metric}_median_true"] = m_t
+    out[f"{metric}_median_false"] = m_f
+    out[f"{metric}_n_true"] = n_t
+    out[f"{metric}_n_false"] = n_f
+
+    out[f"{metric}_delta_true_minus_false"] = pd.to_numeric(m_t, errors="coerce") - pd.to_numeric(m_f, errors="coerce")
+    out[f"{metric}_ratio_true_over_false"] = np.where(
+        pd.to_numeric(m_f, errors="coerce").notna() & (pd.to_numeric(m_f, errors="coerce") != 0),
+        pd.to_numeric(m_t, errors="coerce") / pd.to_numeric(m_f, errors="coerce"),
+        np.nan,
+    )
+
+    out["round_rank"] = out["round"].map(_round_rank)
+    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    out = out.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    return out
+
+
+def _span_effect_table(trend_factor: pd.DataFrame, metric: str, factor_col: str) -> pd.DataFrame:
+    """
+    Spannweite pro Round×Task über Faktor-Ausprägungen (best/worst, delta, ratio).
+    (Ungefiltert; wird für FF1b weiterhin so genutzt.)
+    """
+    med = f"{metric}_median"
+    ncol = f"{metric}_n"
+
+    df = trend_factor.copy()
+    if factor_col not in df.columns:
+        return df.iloc[0:0].copy()
+
+    df[factor_col] = df[factor_col].astype("object").where(df[factor_col].notna(), "UNKNOWN")
+    df[med] = pd.to_numeric(df[med], errors="coerce")
+    df[ncol] = pd.to_numeric(df[ncol], errors="coerce")
+
+    idx_min = df.groupby(["round", "task"])[med].idxmin()
+    idx_max = df.groupby(["round", "task"])[med].idxmax()
+
+    min_rows = df.loc[idx_min, ["round", "task", factor_col, med, ncol]].rename(
+        columns={
+            factor_col: "best_factor",
+            med: f"{metric}_best_median",
+            ncol: f"{metric}_best_n",
+        }
+    )
+    max_rows = df.loc[idx_max, ["round", "task", factor_col, med, ncol]].rename(
+        columns={
+            factor_col: "worst_factor",
+            med: f"{metric}_worst_median",
+            ncol: f"{metric}_worst_n",
+        }
+    )
+
+    out = pd.merge(min_rows, max_rows, on=["round", "task"], how="outer")
+
+    out[f"{metric}_delta_worst_minus_best"] = out[f"{metric}_worst_median"] - out[f"{metric}_best_median"]
+    out[f"{metric}_ratio_worst_over_best"] = np.where(
+        out[f"{metric}_best_median"].notna() & (out[f"{metric}_best_median"] != 0),
+        out[f"{metric}_worst_median"] / out[f"{metric}_best_median"],
+        np.nan,
+    )
+
+    out["round_rank"] = out["round"].map(_round_rank)
+    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    out = out.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    return out
+
+
+def _span_effect_table_gated(trend_factor: pd.DataFrame, metric: str, factor_col: str, min_n: int) -> pd.DataFrame:
+    """
+    GATED Span (FF1c):
+    - Ignoriere Faktor="UNKNOWN"
+    - Nur Ausprägungen mit n>=min_n
+    - Nur Round×Task mit >=2 verbleibenden Ausprägungen
+    """
+    med = f"{metric}_median"
+    ncol = f"{metric}_n"
+
+    if factor_col not in trend_factor.columns:
+        return trend_factor.iloc[0:0].copy()
+
+    df = trend_factor.copy()
+    df[factor_col] = df[factor_col].astype("object").where(df[factor_col].notna(), "UNKNOWN")
+    df[med] = pd.to_numeric(df[med], errors="coerce")
+    df[ncol] = pd.to_numeric(df[ncol], errors="coerce")
+
+    df = df[(df[factor_col] != "UNKNOWN") & (df[ncol] >= int(min_n)) & (df[med].notna())].copy()
+    if df.empty:
+        return pd.DataFrame(
+            columns=[
+                "round", "task", "best_factor", f"{metric}_best_median", f"{metric}_best_n",
+                "worst_factor", f"{metric}_worst_median", f"{metric}_worst_n",
+                f"{metric}_delta_worst_minus_best", f"{metric}_ratio_worst_over_best",
+            ]
+        )
+
+    levels = df.groupby(["round", "task"])[factor_col].nunique().reset_index(name="levels")
+    ok = levels[levels["levels"] >= 2][["round", "task"]]
+    if ok.empty:
+        return pd.DataFrame(
+            columns=[
+                "round", "task", "best_factor", f"{metric}_best_median", f"{metric}_best_n",
+                "worst_factor", f"{metric}_worst_median", f"{metric}_worst_n",
+                f"{metric}_delta_worst_minus_best", f"{metric}_ratio_worst_over_best",
+            ]
+        )
+
+    df = df.merge(ok, on=["round", "task"], how="inner")
+
+    idx_min = df.groupby(["round", "task"])[med].idxmin()
+    idx_max = df.groupby(["round", "task"])[med].idxmax()
+
+    min_rows = df.loc[idx_min, ["round", "task", factor_col, med, ncol]].rename(
+        columns={
+            factor_col: "best_factor",
+            med: f"{metric}_best_median",
+            ncol: f"{metric}_best_n",
+        }
+    )
+    max_rows = df.loc[idx_max, ["round", "task", factor_col, med, ncol]].rename(
+        columns={
+            factor_col: "worst_factor",
+            med: f"{metric}_worst_median",
+            ncol: f"{metric}_worst_n",
+        }
+    )
+
+    out = pd.merge(min_rows, max_rows, on=["round", "task"], how="inner")
+
+    out[f"{metric}_delta_worst_minus_best"] = out[f"{metric}_worst_median"] - out[f"{metric}_best_median"]
+    out[f"{metric}_ratio_worst_over_best"] = np.where(
+        out[f"{metric}_best_median"].notna() & (out[f"{metric}_best_median"] != 0),
+        out[f"{metric}_worst_median"] / out[f"{metric}_best_median"],
+        np.nan,
+    )
+
+    out["round_rank"] = out["round"].map(_round_rank)
+    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    out = out.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    return out
+
+
+def _factor_coverage_by_round_task(
+    df_base: pd.DataFrame,
+    factor_col: str,
+    *,
+    bool_mode: bool = False,
+) -> pd.DataFrame:
+    """
+    FF1c: Coverage je Round×Task für einen Faktor.
+
+    - df_base: typischerweise IN_SCOPE + CORE_TASKS + latency_us notna (konstante Basis)
+    - bool_mode=True: mappt True/False/NA -> "True"/"False"/"UNKNOWN"
+    - sonst: kategorisch, NA -> "UNKNOWN"
+    """
+    tmp = df_base.copy()
+
+    if factor_col not in tmp.columns:
+        tmp[factor_col] = "UNKNOWN"
+
+    if bool_mode:
+        tmp[factor_col] = tmp[factor_col].map({True: "True", False: "False"}).fillna("UNKNOWN")
+    else:
+        tmp[factor_col] = tmp[factor_col].astype("object").where(tmp[factor_col].notna(), "UNKNOWN")
+
+    g = tmp.groupby(["round", "task_canon", factor_col], dropna=False).size().reset_index(name="rows")
+    g = g.rename(columns={"task_canon": "task", factor_col: "factor_value"})
+    total = g.groupby(["round", "task"])["rows"].sum().reset_index(name="rows_total")
+    out = g.merge(total, on=["round", "task"], how="left")
+    out["share"] = np.where(out["rows_total"] > 0, out["rows"] / out["rows_total"], np.nan)
+
+    out["round_rank"] = out["round"].map(_round_rank)
+    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    out = out.sort_values(["round_rank", "task_rank", "factor_value"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    return out
+
+
+
+# -----------------------------
+# FF1c helper: Software parsing
+# -----------------------------
+_SOFTWARE_TOKEN_SPLIT_RE = re.compile(r"(;|,|\s*\+\s*|\s*/\s*)")
+
+_SOFTWARE_FAMILY_RULES = [
+    (re.compile(r"cmsis[-\s]?nn", re.IGNORECASE), "CMSIS-NN"),
+    (re.compile(r"(tensorflow\s*lite\s*for\s*microcontrollers|\btflm\b|tensorflowlite)", re.IGNORECASE), "TFLM"),
+    (re.compile(r"(\btvm\b|microtvm)", re.IGNORECASE), "TVM"),
+    (re.compile(r"x[-\s]?cube[-\s]?ai", re.IGNORECASE), "X-CUBE-AI"),
+    # Syntiant: "TDK"/"SDK" only if "Syntiant" is mentioned to avoid catching generic SDK strings
+    (re.compile(r"syntiant.*(sdk|tdk)|\bsyntiant\s+tdk\b", re.IGNORECASE), "Syntiant SDK/TDK"),
+    (re.compile(r"qualcomm\s+ai\s+stack", re.IGNORECASE), "Qualcomm AI Stack"),
+    (re.compile(r"plumerai", re.IGNORECASE), "Plumerai"),
+    (re.compile(r"\bfinn\b", re.IGNORECASE), "FINN"),
+    (re.compile(r"\bleip\b", re.IGNORECASE), "LEIP"),
+    (re.compile(r"self[-\s]?developed", re.IGNORECASE), "self-developed"),
+]
+
+def _split_software_values(val: object) -> list[str]:
+    """Split multi-software strings into tokens (keeps order, trims whitespace)."""
+    if val is None:
+        return []
+    try:
+        if pd.isna(val):  # type: ignore[arg-type]
+            return []
+    except Exception:
+        pass
+    s = str(val).strip()
+    if not s or s.lower() == "null":
+        return []
+    parts = [p.strip() for p in _SOFTWARE_TOKEN_SPLIT_RE.split(s) if p and p.strip() and p.strip() not in {",", ";"}]
+    return parts
+
+def _software_family(token: object) -> str:
+    if token is None:
+        return "UNKNOWN"
+    try:
+        if pd.isna(token):  # type: ignore[arg-type]
+            return "UNKNOWN"
+    except Exception:
+        pass
+    t = str(token).strip()
+    if not t:
+        return "UNKNOWN"
+    for rx, label in _SOFTWARE_FAMILY_RULES:
+        if rx.search(t):
+            return label
+    return "OTHER"
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/interim/mlperf_tiny_raw.parquet", help="Input parquet")
@@ -305,14 +553,24 @@ def main() -> None:
     df = pd.read_parquet(data_path)
 
     # Optional: Features ergänzen, falls Parquet die neuen Spalten noch nicht enthält
-    need_cols = {"accelerator_present", "processor_family", "software_stack"}
+    need_cols = {
+        "scope_status", "task_canon", "model_mlc_canon",
+        "accelerator_present", "processor_family",
+        "software_stack", "sw_cmsis_nn", "sw_tflm", "sw_tvm",
+    }
     if not need_cols.issubset(set(df.columns)):
         try:
             from src.features import add_features
             df = add_features(df)
         except Exception:
-            # bewusst kein harter Fail: EDA kann weiterlaufen, Faktor-Tabellen werden dann ggf. "UNKNOWN"
             pass
+
+    # Basis-Dataset für FF1c-Coverage: konsistent zur Trendbasis (latency vorhanden)
+    df_base = df[
+        (df.get("scope_status") == "IN_SCOPE")
+        & (df.get("task_canon").isin(CORE_TASKS))
+        & (df.get("latency_us").notna())
+    ].copy()
 
     # A) Coverage & Data quality
     cov_all = _coverage_round_task_all(df)
@@ -321,10 +579,8 @@ def main() -> None:
     unk = _unknown_summary_by_round(df)
     _write_table(unk, tables_dir / "unknown_summary_by_round.csv", "unknown_summary_by_round")
 
-    # B) Metric coverage (inkl. UNKNOWN/OUT_OF_SCOPE)
-    #    (Accuracy nur EINMAL: coverage_accuracy_by_round_task.csv)
-    metrics_general = ["energy_uj", "power_mw", "auc"]
-    for metric in metrics_general:
+    # B) Metric coverage (Accuracy nur EINMAL)
+    for metric in ["energy_uj", "power_mw", "auc"]:
         cov = _metric_coverage_by_round_task(df, metric=metric)
         _write_table(cov, tables_dir / f"coverage_{metric}_by_round_task.csv", f"coverage_{metric}_by_round_task")
 
@@ -344,20 +600,86 @@ def main() -> None:
         trend_idx = _index_trend_table(trend, metric=metric, min_n=min_n)
         _write_table(trend_idx, tables_dir / f"trend_{metric}_round_task_indexed.csv", f"trend_{metric}_round_task_indexed")
 
-    # D) FF1b/FF1c Faktor-Tabellen (minimal, kein Overengineering)
-    #    Nur wenn Basis-Metrik vorhanden ist.
+    # D) FF1b/FF1c Faktor-Tabellen + „pro Round erzählbare“ Effekt-Tabellen
     for metric in ["latency_us", "energy_uj"]:
         if metric not in df.columns:
             continue
 
+        # FF1b (Hardware)
         t_acc = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="accelerator_present")
-        _write_table(t_acc, tables_dir / f"trend_{metric}_round_task_accelerator_present.csv", f"trend_{metric}_round_task_accelerator_present")
+        _write_table(t_acc, tables_dir / f"trend_{metric}_round_task_accelerator_present.csv",
+                    f"trend_{metric}_round_task_accelerator_present")
 
         t_cpu = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="processor_family")
-        _write_table(t_cpu, tables_dir / f"trend_{metric}_round_task_processor_family.csv", f"trend_{metric}_round_task_processor_family")
+        _write_table(t_cpu, tables_dir / f"trend_{metric}_round_task_processor_family.csv",
+                    f"trend_{metric}_round_task_processor_family")
 
-        t_sw = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="software_stack")
-        _write_table(t_sw, tables_dir / f"trend_{metric}_round_task_software_stack.csv", f"trend_{metric}_round_task_software_stack")
+        if "cpu_freq_bucket" in df.columns:
+            t_freq = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="cpu_freq_bucket")
+            _write_table(t_freq, tables_dir / f"trend_{metric}_round_task_cpu_freq_bucket.csv",
+                        f"trend_{metric}_round_task_cpu_freq_bucket")
+
+        eff_acc = _accel_effect_table(t_acc, metric=metric)
+        _write_table(eff_acc, tables_dir / f"ff1b_effect_{metric}_accelerator_present_round_task.csv",
+                    f"ff1b_effect_{metric}_accelerator_present_round_task")
+
+        eff_cpu_span = _span_effect_table(t_cpu, metric=metric, factor_col="processor_family")
+        _write_table(eff_cpu_span, tables_dir / f"ff1b_span_{metric}_processor_family_round_task.csv",
+                    f"ff1b_span_{metric}_processor_family_round_task")
+
+        
+        # FF1c (Software – Option C: Multi-Label + Family Mapping)
+        #
+        # Interpretation: a submission may use multiple software components. We therefore treat software as
+        # multi-label: one submission can contribute to multiple software families (association, not partitioning).
+        sw_src_col = "software" if "software" in df.columns else ("software_stack" if "software_stack" in df.columns else None)
+        if sw_src_col is None:
+            print("WARN: Keine Software-Spalte gefunden – FF1c Tabellen werden übersprungen.")
+        else:
+            df_sw = df.copy()
+
+            if sw_src_col == "software":
+                df_sw["_software_token"] = df_sw[sw_src_col].apply(_split_software_values)
+            else:
+                # fallback: already bucketed; treat as single-label
+                df_sw["_software_token"] = df_sw[sw_src_col].apply(lambda x: [] if pd.isna(x) else [str(x)])
+
+            df_sw = df_sw.explode("_software_token")
+            df_sw["_software_family"] = df_sw["_software_token"].apply(_software_family)
+
+            # Coverage: How often do software families occur (unique submissions) per round/task?
+            cov_sw_rt = (
+                df_sw.groupby(["round", "task_canon", "_software_family"])["public_id"]
+                .nunique()
+                .reset_index(name="rows")
+                .sort_values(["round", "task_canon", "rows"], ascending=[True, True, False])
+            )
+            _write_table(
+                cov_sw_rt,
+                tables_dir / "ff1c_coverage_software_family_by_round_task.csv",
+                "ff1c_coverage_software_family_by_round_task",
+            )
+
+            cov_sw_r = (
+                df_sw.groupby(["round", "_software_family"])["public_id"]
+                .nunique()
+                .reset_index(name="rows")
+                .sort_values(["round", "rows"], ascending=[True, False])
+            )
+            _write_table(
+                cov_sw_r,
+                tables_dir / "ff1c_coverage_software_family_by_round.csv",
+                "ff1c_coverage_software_family_by_round",
+            )
+
+            # Trend tables: latency/energy by software family per round/task
+            t_sw = _trend_round_task_factor(df_sw, metric=metric, min_n=min_n, factor_col="_software_family")
+            _write_table(
+                t_sw,
+                tables_dir / f"ff1c_trend_{metric}_round_task_software_family.csv",
+                f"ff1c_trend_{metric}_round_task_software_family",
+            )
+
 
 
 if __name__ == "__main__":
