@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
 # Wichtig: nur für Features/Scope-Flags; hält den Scope zentral in src/features.py
 from src.features import add_features
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
@@ -15,6 +17,7 @@ INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
 DOCS_DIR = PROJECT_ROOT / "docs"
 
 PARQUET_OUT = INTERIM_DIR / "mlperf_tiny_raw.parquet"
+
 
 ROUND_FILE_PATTERN = re.compile(r"raw_(v\d+\.\d+)\.csv$", re.IGNORECASE)
 
@@ -83,6 +86,22 @@ def _detect_round_from_filename(path: Path) -> str:
 
 
 def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize header names and map MLPerf export columns onto a stable schema.
+
+    Why: MLPerf CSV exports vary slightly across rounds (e.g., trailing spaces, double spaces,
+    minor label changes). We therefore (1) normalize incoming column names and (2) map via
+    the normalized names, with a small set of fallbacks (e.g., any column starting with
+    'Software' maps to 'software').
+    """
+    # 1) normalize raw column names (strip + collapse whitespace)
+    norm_cols: dict[str, str] = {}
+    for c in df.columns:
+        c_str = str(c)
+        c_norm = re.sub(r"\s+", " ", c_str).strip()
+        norm_cols[c] = c_norm
+    df = df.rename(columns=norm_cols)
+
+    # 2) mapping via normalized names (exact matches after normalization)
     rename = {
         "Public ID": "public_id",
         "Organization": "organization",
@@ -97,12 +116,27 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "Host Processor Frequency": "host_processor_frequency",
         "Benchmark": "benchmark",
     }
+
     out = df.rename(columns={k: v for k, v in rename.items() if k in df.columns}).copy()
 
-    # sicherstellen, dass alle erwarteten Felder existieren
+    # 3) fallbacks for known header drift
+    # Software: sometimes appears with minor variants; map the first matching 'Software*' column if needed.
+    if "software" not in out.columns:
+        soft_candidates = [c for c in df.columns if str(c).lower().startswith("software")]
+        if soft_candidates:
+            out["software"] = df[soft_candidates[0]]
+
+    # 4) ensure all expected fields exist
     for col in rename.values():
         if col not in out.columns:
             out[col] = pd.NA
+
+    # 5) normalize null-like strings in key categorical fields
+    for c in ["software", "accelerator", "host_processor_frequency"]:
+        if c in out.columns:
+            out[c] = out[c].astype("string")
+            out[c] = out[c].str.strip()
+            out[c] = out[c].replace({"": pd.NA, "Null": pd.NA, "null": pd.NA, "None": pd.NA, "nan": pd.NA})
 
     return out
 
@@ -133,15 +167,15 @@ def normalize_long(df: pd.DataFrame) -> pd.DataFrame:
     """
     d = df.copy()
 
-    # Model MLC: NA oder leer/Whitespace -> NULL (entspricht "Null"-Spalte in MLCommons Tabellen)
-    d["model_mlc"] = d["model_mlc"].astype("string").str.strip()
-    d["model_mlc"] = d["model_mlc"].where(d["model_mlc"].notna() & (d["model_mlc"] != ""), pd.NA)
-    d["model_mlc"] = d["model_mlc"].fillna("NULL")
+    # Model MLC: leere -> NULL (entspricht der "Null"-Spalte in den MLCommons Tabellen)
+    d["model_mlc"] = d["model_mlc"].where(d["model_mlc"].notna(), "NULL")
 
     parsed = d["units"].apply(_parse_metric)
     d["metric"] = parsed.apply(lambda t: t[0])
     d["metric_unit"] = parsed.apply(lambda t: t[1])
-    d["value_num"] = [_convert_value(m, u, v) for m, u, v in zip(d["metric"], d["metric_unit"], d["avg_result"])]
+    d["value_num"] = [
+        _convert_value(m, u, v) for m, u, v in zip(d["metric"], d["metric_unit"], d["avg_result"])
+    ]
 
     return d
 
