@@ -108,6 +108,50 @@ def _metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFram
     return g
 
 
+def _coverage_latency_energy_by_round_task(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Kompakte Coverage-Tabelle für Kapiteltext:
+    - Basis: IN_SCOPE + CORE_TASKS + latency_us vorhanden (konsistent zur Trendbasis)
+    - Ausgaben je Round×Task:
+        rows_total (latency-basiert),
+        latency_us_n/share,
+        energy_uj_n/share
+    """
+    tmp = df.copy()
+
+    # stabile Basis wie bei Trendtabellen (damit shares interpretierbar sind)
+    tmp = tmp[
+        (tmp.get("scope_status") == "IN_SCOPE")
+        & (tmp.get("task_canon").isin(CORE_TASKS))
+        & (tmp.get("latency_us").notna())
+    ].copy()
+
+    if tmp.empty:
+        return pd.DataFrame(
+            columns=[
+                "round", "task", "rows_total",
+                "latency_us_n", "latency_us_share",
+                "energy_uj_n", "energy_uj_share",
+            ]
+        )
+
+    g = tmp.groupby(["round", "task_canon"], dropna=False).agg(
+        rows_total=("latency_us", "size"),
+        latency_us_n=("latency_us", lambda s: int(s.notna().sum())),
+        energy_uj_n=("energy_uj", lambda s: int(s.notna().sum())) if "energy_uj" in tmp.columns else ("latency_us", lambda s: 0),
+    ).reset_index()
+
+    g["latency_us_share"] = np.where(g["rows_total"] > 0, g["latency_us_n"] / g["rows_total"], np.nan)
+    g["energy_uj_share"] = np.where(g["rows_total"] > 0, g["energy_uj_n"] / g["rows_total"], np.nan)
+
+    g = g.rename(columns={"task_canon": "task"})
+
+    g["round_rank"] = g["round"].map(_round_rank)
+    g["task_rank"] = g["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    g = g.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
+    return g
+
+
 def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
     """
     Trendtabellen nur für IN_SCOPE + CORE_TASKS.
@@ -333,7 +377,6 @@ def _accel_effect_table(trend_factor: pd.DataFrame, metric: str) -> pd.DataFrame
 def _span_effect_table(trend_factor: pd.DataFrame, metric: str, factor_col: str) -> pd.DataFrame:
     """
     Spannweite pro Round×Task über Faktor-Ausprägungen (best/worst, delta, ratio).
-    (Ungefiltert; wird für FF1b weiterhin so genutzt.)
     """
     med = f"{metric}_median"
     ncol = f"{metric}_n"
@@ -379,116 +422,6 @@ def _span_effect_table(trend_factor: pd.DataFrame, metric: str, factor_col: str)
     return out
 
 
-def _span_effect_table_gated(trend_factor: pd.DataFrame, metric: str, factor_col: str, min_n: int) -> pd.DataFrame:
-    """
-    GATED Span (FF1c):
-    - Ignoriere Faktor="UNKNOWN"
-    - Nur Ausprägungen mit n>=min_n
-    - Nur Round×Task mit >=2 verbleibenden Ausprägungen
-    """
-    med = f"{metric}_median"
-    ncol = f"{metric}_n"
-
-    if factor_col not in trend_factor.columns:
-        return trend_factor.iloc[0:0].copy()
-
-    df = trend_factor.copy()
-    df[factor_col] = df[factor_col].astype("object").where(df[factor_col].notna(), "UNKNOWN")
-    df[med] = pd.to_numeric(df[med], errors="coerce")
-    df[ncol] = pd.to_numeric(df[ncol], errors="coerce")
-
-    df = df[(df[factor_col] != "UNKNOWN") & (df[ncol] >= int(min_n)) & (df[med].notna())].copy()
-    if df.empty:
-        return pd.DataFrame(
-            columns=[
-                "round", "task", "best_factor", f"{metric}_best_median", f"{metric}_best_n",
-                "worst_factor", f"{metric}_worst_median", f"{metric}_worst_n",
-                f"{metric}_delta_worst_minus_best", f"{metric}_ratio_worst_over_best",
-            ]
-        )
-
-    levels = df.groupby(["round", "task"])[factor_col].nunique().reset_index(name="levels")
-    ok = levels[levels["levels"] >= 2][["round", "task"]]
-    if ok.empty:
-        return pd.DataFrame(
-            columns=[
-                "round", "task", "best_factor", f"{metric}_best_median", f"{metric}_best_n",
-                "worst_factor", f"{metric}_worst_median", f"{metric}_worst_n",
-                f"{metric}_delta_worst_minus_best", f"{metric}_ratio_worst_over_best",
-            ]
-        )
-
-    df = df.merge(ok, on=["round", "task"], how="inner")
-
-    idx_min = df.groupby(["round", "task"])[med].idxmin()
-    idx_max = df.groupby(["round", "task"])[med].idxmax()
-
-    min_rows = df.loc[idx_min, ["round", "task", factor_col, med, ncol]].rename(
-        columns={
-            factor_col: "best_factor",
-            med: f"{metric}_best_median",
-            ncol: f"{metric}_best_n",
-        }
-    )
-    max_rows = df.loc[idx_max, ["round", "task", factor_col, med, ncol]].rename(
-        columns={
-            factor_col: "worst_factor",
-            med: f"{metric}_worst_median",
-            ncol: f"{metric}_worst_n",
-        }
-    )
-
-    out = pd.merge(min_rows, max_rows, on=["round", "task"], how="inner")
-
-    out[f"{metric}_delta_worst_minus_best"] = out[f"{metric}_worst_median"] - out[f"{metric}_best_median"]
-    out[f"{metric}_ratio_worst_over_best"] = np.where(
-        out[f"{metric}_best_median"].notna() & (out[f"{metric}_best_median"] != 0),
-        out[f"{metric}_worst_median"] / out[f"{metric}_best_median"],
-        np.nan,
-    )
-
-    out["round_rank"] = out["round"].map(_round_rank)
-    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
-    out = out.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
-    return out
-
-
-def _factor_coverage_by_round_task(
-    df_base: pd.DataFrame,
-    factor_col: str,
-    *,
-    bool_mode: bool = False,
-) -> pd.DataFrame:
-    """
-    FF1c: Coverage je Round×Task für einen Faktor.
-
-    - df_base: typischerweise IN_SCOPE + CORE_TASKS + latency_us notna (konstante Basis)
-    - bool_mode=True: mappt True/False/NA -> "True"/"False"/"UNKNOWN"
-    - sonst: kategorisch, NA -> "UNKNOWN"
-    """
-    tmp = df_base.copy()
-
-    if factor_col not in tmp.columns:
-        tmp[factor_col] = "UNKNOWN"
-
-    if bool_mode:
-        tmp[factor_col] = tmp[factor_col].map({True: "True", False: "False"}).fillna("UNKNOWN")
-    else:
-        tmp[factor_col] = tmp[factor_col].astype("object").where(tmp[factor_col].notna(), "UNKNOWN")
-
-    g = tmp.groupby(["round", "task_canon", factor_col], dropna=False).size().reset_index(name="rows")
-    g = g.rename(columns={"task_canon": "task", factor_col: "factor_value"})
-    total = g.groupby(["round", "task"])["rows"].sum().reset_index(name="rows_total")
-    out = g.merge(total, on=["round", "task"], how="left")
-    out["share"] = np.where(out["rows_total"] > 0, out["rows"] / out["rows_total"], np.nan)
-
-    out["round_rank"] = out["round"].map(_round_rank)
-    out["task_rank"] = out["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
-    out = out.sort_values(["round_rank", "task_rank", "factor_value"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
-    return out
-
-
-
 # -----------------------------
 # FF1c helper: Software parsing
 # -----------------------------
@@ -499,7 +432,6 @@ _SOFTWARE_FAMILY_RULES = [
     (re.compile(r"(tensorflow\s*lite\s*for\s*microcontrollers|\btflm\b|tensorflowlite)", re.IGNORECASE), "TFLM"),
     (re.compile(r"(\btvm\b|microtvm)", re.IGNORECASE), "TVM"),
     (re.compile(r"x[-\s]?cube[-\s]?ai", re.IGNORECASE), "X-CUBE-AI"),
-    # Syntiant: "TDK"/"SDK" only if "Syntiant" is mentioned to avoid catching generic SDK strings
     (re.compile(r"syntiant.*(sdk|tdk)|\bsyntiant\s+tdk\b", re.IGNORECASE), "Syntiant SDK/TDK"),
     (re.compile(r"qualcomm\s+ai\s+stack", re.IGNORECASE), "Qualcomm AI Stack"),
     (re.compile(r"plumerai", re.IGNORECASE), "Plumerai"),
@@ -508,8 +440,9 @@ _SOFTWARE_FAMILY_RULES = [
     (re.compile(r"self[-\s]?developed", re.IGNORECASE), "self-developed"),
 ]
 
+
 def _split_software_values(val: object) -> list[str]:
-    """Split multi-software strings into tokens (keeps order, trims whitespace)."""
+    """Zerlegt Mehrfachangaben in der Software-Spalte in einzelne Tokens (Reihenfolge bleibt erhalten)."""
     if val is None:
         return []
     try:
@@ -522,6 +455,7 @@ def _split_software_values(val: object) -> list[str]:
         return []
     parts = [p.strip() for p in _SOFTWARE_TOKEN_SPLIT_RE.split(s) if p and p.strip() and p.strip() not in {",", ";"}]
     return parts
+
 
 def _software_family(token: object) -> str:
     if token is None:
@@ -538,6 +472,7 @@ def _software_family(token: object) -> str:
         if rx.search(t):
             return label
     return "OTHER"
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -587,6 +522,10 @@ def main() -> None:
     cov_acc = _metric_coverage_by_round_task(df, metric="accuracy")
     _write_table(cov_acc, tables_dir / "coverage_accuracy_by_round_task.csv", "coverage_accuracy_by_round_task")
 
+    # NEU: kompakte Tabelle "latency + energy coverage" pro Round×Task (IN_SCOPE + CORE_TASKS)
+    cov_le = _coverage_latency_energy_by_round_task(df)
+    _write_table(cov_le, tables_dir / "coverage_latency_energy_by_round_task.csv", "coverage_latency_energy_by_round_task")
+
     # C) Trendtabellen + Index
     min_n = int(args.min_n)
 
@@ -600,38 +539,51 @@ def main() -> None:
         trend_idx = _index_trend_table(trend, metric=metric, min_n=min_n)
         _write_table(trend_idx, tables_dir / f"trend_{metric}_round_task_indexed.csv", f"trend_{metric}_round_task_indexed")
 
-    # D) FF1b/FF1c Faktor-Tabellen + „pro Round erzählbare“ Effekt-Tabellen
+    # D) FF1b/FF1c Faktor-Tabellen + Effekt-Tabellen
     for metric in ["latency_us", "energy_uj"]:
         if metric not in df.columns:
             continue
 
         # FF1b (Hardware)
         t_acc = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="accelerator_present")
-        _write_table(t_acc, tables_dir / f"trend_{metric}_round_task_accelerator_present.csv",
-                    f"trend_{metric}_round_task_accelerator_present")
+        _write_table(
+            t_acc,
+            tables_dir / f"trend_{metric}_round_task_accelerator_present.csv",
+            f"trend_{metric}_round_task_accelerator_present",
+        )
 
         t_cpu = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="processor_family")
-        _write_table(t_cpu, tables_dir / f"trend_{metric}_round_task_processor_family.csv",
-                    f"trend_{metric}_round_task_processor_family")
+        _write_table(
+            t_cpu,
+            tables_dir / f"trend_{metric}_round_task_processor_family.csv",
+            f"trend_{metric}_round_task_processor_family",
+        )
 
         if "cpu_freq_bucket" in df.columns:
             t_freq = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="cpu_freq_bucket")
-            _write_table(t_freq, tables_dir / f"trend_{metric}_round_task_cpu_freq_bucket.csv",
-                        f"trend_{metric}_round_task_cpu_freq_bucket")
+            _write_table(
+                t_freq,
+                tables_dir / f"trend_{metric}_round_task_cpu_freq_bucket.csv",
+                f"trend_{metric}_round_task_cpu_freq_bucket",
+            )
 
         eff_acc = _accel_effect_table(t_acc, metric=metric)
-        _write_table(eff_acc, tables_dir / f"ff1b_effect_{metric}_accelerator_present_round_task.csv",
-                    f"ff1b_effect_{metric}_accelerator_present_round_task")
+        _write_table(
+            eff_acc,
+            tables_dir / f"ff1b_effect_{metric}_accelerator_present_round_task.csv",
+            f"ff1b_effect_{metric}_accelerator_present_round_task",
+        )
 
         eff_cpu_span = _span_effect_table(t_cpu, metric=metric, factor_col="processor_family")
-        _write_table(eff_cpu_span, tables_dir / f"ff1b_span_{metric}_processor_family_round_task.csv",
-                    f"ff1b_span_{metric}_processor_family_round_task")
+        _write_table(
+            eff_cpu_span,
+            tables_dir / f"ff1b_span_{metric}_processor_family_round_task.csv",
+            f"ff1b_span_{metric}_processor_family_round_task",
+        )
 
-        
         # FF1c (Software – Option C: Multi-Label + Family Mapping)
-        #
-        # Interpretation: a submission may use multiple software components. We therefore treat software as
-        # multi-label: one submission can contribute to multiple software families (association, not partitioning).
+        # Interpretation: Eine Einreichung kann mehrere Software-Komponenten enthalten.
+        # Daher werden Software-Familien multi-label gezählt (assoziativ, keine disjunkte Partitionierung).
         sw_src_col = "software" if "software" in df.columns else ("software_stack" if "software_stack" in df.columns else None)
         if sw_src_col is None:
             print("WARN: Keine Software-Spalte gefunden – FF1c Tabellen werden übersprungen.")
@@ -641,13 +593,12 @@ def main() -> None:
             if sw_src_col == "software":
                 df_sw["_software_token"] = df_sw[sw_src_col].apply(_split_software_values)
             else:
-                # fallback: already bucketed; treat as single-label
+                # Fallback: bereits gebucktet; als Single-Label interpretieren
                 df_sw["_software_token"] = df_sw[sw_src_col].apply(lambda x: [] if pd.isna(x) else [str(x)])
 
             df_sw = df_sw.explode("_software_token")
             df_sw["_software_family"] = df_sw["_software_token"].apply(_software_family)
 
-            # Coverage: How often do software families occur (unique submissions) per round/task?
             cov_sw_rt = (
                 df_sw.groupby(["round", "task_canon", "_software_family"])["public_id"]
                 .nunique()
@@ -672,14 +623,12 @@ def main() -> None:
                 "ff1c_coverage_software_family_by_round",
             )
 
-            # Trend tables: latency/energy by software family per round/task
             t_sw = _trend_round_task_factor(df_sw, metric=metric, min_n=min_n, factor_col="_software_family")
             _write_table(
                 t_sw,
                 tables_dir / f"ff1c_trend_{metric}_round_task_software_family.csv",
                 f"ff1c_trend_{metric}_round_task_software_family",
             )
-
 
 
 if __name__ == "__main__":
