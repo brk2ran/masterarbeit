@@ -10,15 +10,6 @@ __pycache__/
 data/interim/
 data/processed/
 
-
-# ignore reports by default
-reports/
-
-# but keep EDA result tables (small, useful for reproducibility)
-!reports/tables/
-!reports/tables/**
-
-
 # OS / Editor
 .vscode/
 .DS_Store
