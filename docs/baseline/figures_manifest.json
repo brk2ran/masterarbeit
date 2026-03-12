@@ -1,12 +1,14 @@
 {
+  "ff2_pareto_scatter_latency_vs_energy_by_task.png": "fb39ab656e5c04d38436ecdb6af3a581b7783069eb424fb0e3d4bc6595e822a8",
+  "ff2_pareto_scatter_latency_vs_energy_by_task.svg": "be704220862c2f7130379ac2bdeecf4737db77f5c17c121400ce09eca28deebc",
   "trend_energy_uj.png": "d11652aba1c1950629338544945fbb48ddf8146215cec9a51b1db2675b4c9cca",
-  "trend_energy_uj.svg": "8cfa214b3d28c82db3c6cb5cd7a21415ca659d672ced3eb8977db402208c0839",
+  "trend_energy_uj.svg": "8dba0a0b0aaa6043893ac1fd83ad29f060e4694c83b225e838190dc983551653",
   "trend_energy_uj_index.png": "ce38e867b1bdf9011177a456897067ba477832724373447c8bd90cbca6803841",
-  "trend_energy_uj_index.svg": "db8c597abdf8b14580dd87f4a9070fe5ebc08c1d98e68c1386cd8e355013594d",
+  "trend_energy_uj_index.svg": "bef267b3d7a9feb2c5f959fa9ea7b27cd2f9329bb4e7416b69cb818c35e09e78",
   "trend_latency_us.png": "15b5776c9165be84174dc8a7912d56a94d62173e95e0e71ef7bb5ac6780badd4",
-  "trend_latency_us.svg": "845978c1818ff0e69241edb92a46926c44d4b6b3fee4237d20ee604d8a3a51e4",
+  "trend_latency_us.svg": "7d213e4d0523b570791b772428cf3cad2ae68c98c5307d48664d184ef0f90152",
   "trend_latency_us_index.png": "4fe56ab73010b531cbf4851dc39059dc45c3361c45d64f17f4694a4333102b66",
-  "trend_latency_us_index.svg": "ece033d07193c68e5f1831251770d9196b0d253cb94dd3679fd5f4ae2f893050",
+  "trend_latency_us_index.svg": "16697814e16183d61ea6ba319d15fa48e77a8dcfb116f80378c9efb1bb5776c1",
   "unknown_share_by_round.png": "a7e88bcf531541e1b3780e98008ad504f912ad5d051d730acdebebe62235f4b2",
-  "unknown_share_by_round.svg": "b070ceeb7b318fd1a900f430b2f6e050d8f49f938216737cb5027912f2831eb8"
+  "unknown_share_by_round.svg": "3a4c55fb7d3dece55fa583e40fd4e0832275ce2a51e9b215932d4043a46ec4a4"
 }

@@ -1,15 +1,18 @@
-﻿round,task,rows,rows_with_metric,share_metric
+round,task_label,rows,rows_with_metric,share_metric
 v0.5,AD,4,0,0.0
 v0.5,IC,4,0,0.0
 v0.5,KWS,5,0,0.0
+v0.5,UNKNOWN,1,1,1.0
 v0.5,VWW,4,0,0.0
 v0.7,AD,12,0,0.0
 v0.7,IC,11,0,0.0
 v0.7,KWS,13,0,0.0
+v0.7,UNKNOWN,12,0,0.0
 v0.7,VWW,11,0,0.0
 v1.0,AD,14,0,0.0
 v1.0,IC,15,0,0.0
 v1.0,KWS,15,0,0.0
+v1.0,UNKNOWN,1,0,0.0
 v1.0,VWW,15,0,0.0
 v1.1,AD,23,0,0.0
 v1.1,IC,30,0,0.0
@@ -22,4 +25,5 @@ v1.2,VWW,17,0,0.0
 v1.3,AD,6,0,0.0
 v1.3,IC,9,0,0.0
 v1.3,KWS,9,0,0.0
+v1.3,OUT_OF_SCOPE,9,0,0.0
 v1.3,VWW,10,0,0.0

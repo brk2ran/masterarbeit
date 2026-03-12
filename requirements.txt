@@ -2,8 +2,5 @@ pandas
 numpy
 pyarrow
 matplotlib
-seaborn
 scikit-learn
-scipy
-jupyterlab
-ipykernel
+

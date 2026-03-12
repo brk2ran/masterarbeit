@@ -1,0 +1,127 @@
+round,task_canon,_software_family,rows
+v0.5,AD,LEIP,2
+v0.5,AD,TFLM,2
+v0.5,IC,LEIP,2
+v0.5,IC,TFLM,2
+v0.5,KWS,LEIP,2
+v0.5,KWS,TFLM,2
+v0.5,KWS,OTHER,1
+v0.5,KWS,Syntiant SDK/TDK,1
+v0.5,UNKNOWN,OTHER,1
+v0.5,VWW,LEIP,2
+v0.5,VWW,TFLM,2
+v0.7,AD,TFLM,6
+v0.7,AD,OTHER,4
+v0.7,AD,Plumerai,3
+v0.7,AD,X-CUBE-AI,3
+v0.7,AD,CMSIS-NN,1
+v0.7,IC,TFLM,5
+v0.7,IC,OTHER,3
+v0.7,IC,Plumerai,3
+v0.7,IC,X-CUBE-AI,3
+v0.7,IC,CMSIS-NN,1
+v0.7,KWS,TFLM,5
+v0.7,KWS,OTHER,3
+v0.7,KWS,Plumerai,3
+v0.7,KWS,X-CUBE-AI,3
+v0.7,KWS,Syntiant SDK/TDK,2
+v0.7,KWS,CMSIS-NN,1
+v0.7,UNKNOWN,OTHER,8
+v0.7,UNKNOWN,FINN,4
+v0.7,VWW,TFLM,5
+v0.7,VWW,OTHER,3
+v0.7,VWW,Plumerai,3
+v0.7,VWW,X-CUBE-AI,3
+v0.7,VWW,CMSIS-NN,1
+v1.0,AD,Plumerai,4
+v1.0,AD,CMSIS-NN,3
+v1.0,AD,OTHER,3
+v1.0,AD,X-CUBE-AI,3
+v1.0,AD,Qualcomm AI Stack,1
+v1.0,AD,TFLM,1
+v1.0,AD,TVM,1
+v1.0,IC,Plumerai,4
+v1.0,IC,CMSIS-NN,3
+v1.0,IC,OTHER,3
+v1.0,IC,X-CUBE-AI,3
+v1.0,IC,Syntiant SDK/TDK,2
+v1.0,IC,TFLM,1
+v1.0,IC,TVM,1
+v1.0,KWS,Plumerai,4
+v1.0,KWS,CMSIS-NN,3
+v1.0,KWS,OTHER,3
+v1.0,KWS,X-CUBE-AI,3
+v1.0,KWS,Syntiant SDK/TDK,2
+v1.0,KWS,TFLM,1
+v1.0,KWS,TVM,1
+v1.0,UNKNOWN,OTHER,1
+v1.0,VWW,Plumerai,4
+v1.0,VWW,CMSIS-NN,3
+v1.0,VWW,OTHER,3
+v1.0,VWW,X-CUBE-AI,3
+v1.0,VWW,Syntiant SDK/TDK,2
+v1.0,VWW,TFLM,1
+v1.0,VWW,TVM,1
+v1.1,AD,OTHER,7
+v1.1,AD,Plumerai,5
+v1.1,AD,X-CUBE-AI,4
+v1.1,AD,TVM,2
+v1.1,AD,UNKNOWN,1
+v1.1,IC,OTHER,11
+v1.1,IC,Plumerai,5
+v1.1,IC,X-CUBE-AI,4
+v1.1,IC,TVM,3
+v1.1,IC,Syntiant SDK/TDK,1
+v1.1,IC,UNKNOWN,1
+v1.1,KWS,OTHER,11
+v1.1,KWS,Plumerai,5
+v1.1,KWS,X-CUBE-AI,4
+v1.1,KWS,TVM,3
+v1.1,KWS,Syntiant SDK/TDK,1
+v1.1,KWS,UNKNOWN,1
+v1.1,VWW,OTHER,10
+v1.1,VWW,Plumerai,5
+v1.1,VWW,X-CUBE-AI,4
+v1.1,VWW,TVM,2
+v1.1,VWW,UNKNOWN,2
+v1.1,VWW,Syntiant SDK/TDK,1
+v1.2,AD,UNKNOWN,8
+v1.2,AD,X-CUBE-AI,3
+v1.2,AD,OTHER,1
+v1.2,AD,Qualcomm AI Stack,1
+v1.2,IC,UNKNOWN,8
+v1.2,IC,X-CUBE-AI,3
+v1.2,IC,OTHER,1
+v1.2,IC,Qualcomm AI Stack,1
+v1.2,IC,Syntiant SDK/TDK,1
+v1.2,IC,self-developed,1
+v1.2,KWS,UNKNOWN,8
+v1.2,KWS,X-CUBE-AI,3
+v1.2,KWS,Qualcomm AI Stack,1
+v1.2,KWS,Syntiant SDK/TDK,1
+v1.2,VWW,UNKNOWN,7
+v1.2,VWW,X-CUBE-AI,3
+v1.2,VWW,self-developed,2
+v1.2,VWW,Qualcomm AI Stack,1
+v1.2,VWW,Syntiant SDK/TDK,1
+v1.3,AD,X-CUBE-AI,3
+v1.3,AD,self-developed,2
+v1.3,AD,Qualcomm AI Stack,1
+v1.3,IC,X-CUBE-AI,3
+v1.3,IC,self-developed,2
+v1.3,IC,OTHER,1
+v1.3,IC,Qualcomm AI Stack,1
+v1.3,IC,Syntiant SDK/TDK,1
+v1.3,KWS,X-CUBE-AI,3
+v1.3,KWS,self-developed,2
+v1.3,KWS,OTHER,1
+v1.3,KWS,Qualcomm AI Stack,1
+v1.3,KWS,Syntiant SDK/TDK,1
+v1.3,OUT_OF_SCOPE,X-CUBE-AI,4
+v1.3,OUT_OF_SCOPE,OTHER,1
+v1.3,OUT_OF_SCOPE,Syntiant SDK/TDK,1
+v1.3,VWW,X-CUBE-AI,3
+v1.3,VWW,self-developed,3
+v1.3,VWW,OTHER,1
+v1.3,VWW,Qualcomm AI Stack,1
+v1.3,VWW,Syntiant SDK/TDK,1

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from typing import Dict
 
@@ -7,8 +9,6 @@ import pandas as pd
 TASKS_IN_SCOPE = ["AD", "IC", "KWS", "VWW"]
 TASKS_ALL_ORDER = ["AD", "IC", "KWS", "VWW", "UNKNOWN", "OUT_OF_SCOPE"]
 
-# Benchmark darf nur als Ersatz-Model dienen, wenn es wie ein Modellstring aussieht.
-# In deinen Daten ist benchmark i.d.R. "Tiny" -> greift damit NICHT.
 MODEL_LIKE_PATTERN = re.compile(
     r"DS\s*-?\s*CNN|1D\s*-?\s*DS\s*-?\s*CNN|RESNET|MOBILENET|AUTOENCODER|FC\s+AUTOENCODER",
     re.IGNORECASE,
@@ -28,7 +28,6 @@ def _canon_task_from_model(model_mlc_canon: str) -> str:
 
 
 def _canon_task_from_task_col(raw: object) -> str:
-    """Mappt eine Task-Spalte (falls vorhanden) robust auf AD/IC/KWS/VWW/UNKNOWN."""
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return "UNKNOWN"
     s = str(raw).strip().upper()
@@ -49,11 +48,6 @@ def _canon_task_from_task_col(raw: object) -> str:
 
 
 def _canon_model(raw: object) -> str:
-    """
-    Robust kanonisieren:
-    - wenige direkte Mappings
-    - ansonsten token/regex-basiert
-    """
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return "UNKNOWN"
     s = str(raw).strip()
@@ -86,7 +80,6 @@ def _canon_model(raw: object) -> str:
     if u in direct:
         return direct[u]
 
-    # Heuristik für neue Varianten
     if re.search(r"\b1D\b", u) and re.search(r"\bDS\b", u) and re.search(r"\bCNN\b", u):
         return "1D_DS_CNN"
     if re.search(r"\bDS\b", u) and re.search(r"\bCNN\b", u):
@@ -101,9 +94,6 @@ def _canon_model(raw: object) -> str:
     return "UNKNOWN"
 
 
-# -----------------------------
-# FF1b / FF1c: minimal robuste Heuristiken
-# -----------------------------
 _WS_RE = re.compile(r"\s+")
 _FREQ_RE = re.compile(r"([0-9]+(?:[.,][0-9]+)?)\s*(GHZ|MHZ)?", re.IGNORECASE)
 
@@ -140,7 +130,7 @@ def _parse_freq_mhz(freq_raw: object) -> float:
     unit = (m.group(2) or "").upper()
     if unit == "GHZ":
         return val * 1000.0
-    return val  # default MHz
+    return val
 
 
 def _bucket_freq_mhz(freq_mhz: float) -> str:
@@ -181,16 +171,6 @@ def _infer_software_stack(software_raw: object) -> str:
 
 
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Ergänzt kanonische Task-/Model-/Scope-Spalten.
-    OUT_OF_SCOPE (1D-DS-CNN) wird explizit überschrieben.
-
-    Erweiterung (FF1b/FF1c):
-      - accelerator_present
-      - processor_family
-      - cpu_freq_mhz + cpu_freq_bucket
-      - software_stack + sw_* Flags
-    """
     out = df.copy()
 
     if "model_mlc" not in out.columns:
@@ -199,7 +179,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     model_raw = out["model_mlc"].astype("string").str.strip()
     model_valid = model_raw.notna() & (model_raw != "") & (model_raw.str.upper() != "NULL")
 
-    # Benchmark nur als Model-Ersatz zulassen, wenn es wie ein Modellstring aussieht.
     if "benchmark" in out.columns:
         bench_raw = out["benchmark"].astype("string").str.strip()
         bench_valid = bench_raw.notna() & (bench_raw != "") & bench_raw.str.contains(MODEL_LIKE_PATTERN, regex=True)
@@ -227,16 +206,12 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["out_of_scope"] = False
     out["scope_status"] = np.where(out["in_scope"], "IN_SCOPE", "UNKNOWN")
 
-    # OUT_OF_SCOPE Override: 1D_DS_CNN bleibt explizit ausgeschlossen
     is_1d = out["model_mlc_canon"].eq("1D_DS_CNN")
     out.loc[is_1d, "in_scope"] = False
     out.loc[is_1d, "out_of_scope"] = True
     out.loc[is_1d, "task_canon"] = "OUT_OF_SCOPE"
     out.loc[is_1d, "scope_status"] = "OUT_OF_SCOPE"
 
-    # -----------------------------
-    # FF1b: Hardware features (minimal)
-    # -----------------------------
     if "accelerator" in out.columns:
         out["accelerator_present"] = out["accelerator"].apply(lambda x: _norm_str(x) != "")
     else:
@@ -254,9 +229,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
         out["cpu_freq_mhz"] = np.nan
         out["cpu_freq_bucket"] = "UNKNOWN"
 
-    # -----------------------------
-    # FF1c: Software features (minimal)
-    # -----------------------------
     if "software" in out.columns:
         flags = out["software"].apply(_infer_software_flags)
         out["sw_cmsis_nn"] = flags.apply(lambda d: bool(d["sw_cmsis_nn"]))
@@ -275,10 +247,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_analysis_subsets(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-    """
-    Liefert standardisierte Subsets für EDA/Checks.
-    DS_LATENCY/DS_ENERGY werden explizit bereitgestellt.
-    """
     if "scope_status" not in df.columns or "task_canon" not in df.columns or "model_mlc_canon" not in df.columns:
         df = add_features(df)
 
@@ -306,7 +274,6 @@ def get_analysis_subsets(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
 
 
 def sort_rounds(df: pd.DataFrame, col: str) -> pd.DataFrame:
-    # feste Reihenfolge (falls neue Runden kommen, bleiben sie am Ende)
     order = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
     if col in df.columns:
         df[col] = pd.Categorical(df[col], categories=order, ordered=True)
@@ -314,12 +281,8 @@ def sort_rounds(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
 
 def round_task_counts(df: pd.DataFrame, *, include_unknown: bool = True, include_out_of_scope: bool = True) -> pd.DataFrame:
-    """
-    Counts pro Round×Task im Wide-Format.
-    Rückgabe wird mit index=False gespeichert (Round ist daher eine normale Spalte).
-    """
     if "round" not in df.columns or "task_canon" not in df.columns:
-        raise ValueError("Spalten 'round' und/oder 'task_canon' fehlen.")
+        raise ValueError("Columns 'round' and/or 'task_canon' missing.")
 
     d = df.copy()
 
@@ -332,7 +295,6 @@ def round_task_counts(df: pd.DataFrame, *, include_unknown: bool = True, include
     d = d[d["task_canon"].isin(allowed)]
     piv = d.groupby(["round", "task_canon"], dropna=False).size().unstack(fill_value=0)
 
-    # Spalten vollständig/geordnet
     ordered_cols = [c for c in TASKS_ALL_ORDER if c in piv.columns]
     piv = piv.reindex(columns=ordered_cols, fill_value=0)
 
@@ -342,14 +304,8 @@ def round_task_counts(df: pd.DataFrame, *, include_unknown: bool = True, include
 
 
 def metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame:
-    """
-    Für jede Round×Task-Gruppe:
-      - rows: Anzahl Zeilen
-      - rows_with_metric: Anzahl nicht-NA für metric
-      - share_metric: Anteil mit metric
-    """
     if "round" not in df.columns or "task_canon" not in df.columns:
-        raise ValueError("Spalten 'round' und/oder 'task_canon' fehlen.")
+        raise ValueError("Columns 'round' and/or 'task_canon' missing.")
 
     if metric not in df.columns:
         out = (
@@ -373,14 +329,8 @@ def metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame
 
 
 def unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Pro Round:
-      - rows_total
-      - rows_unknown
-      - share_unknown
-    """
     if "round" not in df.columns or "scope_status" not in df.columns:
-        raise ValueError("Spalten 'round' und/oder 'scope_status' fehlen.")
+        raise ValueError("Columns 'round' and/or 'scope_status' missing.")
 
     grp = df.groupby("round", dropna=False)
     out = grp.size().reset_index(name="rows_total")

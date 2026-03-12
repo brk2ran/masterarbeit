@@ -1,0 +1,37 @@
+round,_software_family,rows
+v0.5,LEIP,2
+v0.5,OTHER,2
+v0.5,TFLM,2
+v0.5,Syntiant SDK/TDK,1
+v0.7,OTHER,12
+v0.7,TFLM,6
+v0.7,FINN,4
+v0.7,Plumerai,3
+v0.7,X-CUBE-AI,3
+v0.7,Syntiant SDK/TDK,2
+v0.7,CMSIS-NN,1
+v1.0,OTHER,4
+v1.0,Plumerai,4
+v1.0,CMSIS-NN,3
+v1.0,X-CUBE-AI,3
+v1.0,Syntiant SDK/TDK,2
+v1.0,Qualcomm AI Stack,1
+v1.0,TFLM,1
+v1.0,TVM,1
+v1.1,OTHER,12
+v1.1,Plumerai,5
+v1.1,X-CUBE-AI,4
+v1.1,TVM,3
+v1.1,UNKNOWN,2
+v1.1,Syntiant SDK/TDK,1
+v1.2,UNKNOWN,8
+v1.2,X-CUBE-AI,3
+v1.2,self-developed,2
+v1.2,OTHER,1
+v1.2,Qualcomm AI Stack,1
+v1.2,Syntiant SDK/TDK,1
+v1.3,X-CUBE-AI,4
+v1.3,self-developed,3
+v1.3,OTHER,1
+v1.3,Qualcomm AI Stack,1
+v1.3,Syntiant SDK/TDK,1

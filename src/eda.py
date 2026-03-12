@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -31,12 +31,6 @@ def _write_table(df: pd.DataFrame, out_path: Path, tag: str) -> None:
 
 
 def _task_label(row: pd.Series) -> str:
-    """
-    Label-Regel für Coverage:
-    - OUT_OF_SCOPE bleibt OUT_OF_SCOPE (als eigene Kategorie)
-    - fehlende / unbekannte Tasks -> UNKNOWN
-    - sonst task_canon (AD/IC/KWS/VWW)
-    """
     scope_status = row.get("scope_status", None)
     task_canon = row.get("task_canon", None)
 
@@ -86,9 +80,6 @@ def _unknown_summary_by_round(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFrame:
-    """
-    Coverage je Round×Task_label (inkl. UNKNOWN/OUT_OF_SCOPE als Kategorien).
-    """
     tmp = df.copy()
     tmp["task_label"] = tmp.apply(_task_label, axis=1)
 
@@ -109,17 +100,8 @@ def _metric_coverage_by_round_task(df: pd.DataFrame, metric: str) -> pd.DataFram
 
 
 def _coverage_latency_energy_by_round_task(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Kompakte Coverage-Tabelle für Kapiteltext:
-    - Basis: IN_SCOPE + CORE_TASKS + latency_us vorhanden (konsistent zur Trendbasis)
-    - Ausgaben je Round×Task:
-        rows_total (latency-basiert),
-        latency_us_n/share,
-        energy_uj_n/share
-    """
     tmp = df.copy()
 
-    # stabile Basis wie bei Trendtabellen (damit shares interpretierbar sind)
     tmp = tmp[
         (tmp.get("scope_status") == "IN_SCOPE")
         & (tmp.get("task_canon").isin(CORE_TASKS))
@@ -145,7 +127,6 @@ def _coverage_latency_energy_by_round_task(df: pd.DataFrame) -> pd.DataFrame:
     g["energy_uj_share"] = np.where(g["rows_total"] > 0, g["energy_uj_n"] / g["rows_total"], np.nan)
 
     g = g.rename(columns={"task_canon": "task"})
-
     g["round_rank"] = g["round"].map(_round_rank)
     g["task_rank"] = g["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
     g = g.sort_values(["round_rank", "task_rank"]).drop(columns=["round_rank", "task_rank"]).reset_index(drop=True)
@@ -153,9 +134,6 @@ def _coverage_latency_energy_by_round_task(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
-    """
-    Trendtabellen nur für IN_SCOPE + CORE_TASKS.
-    """
     tmp = df.copy()
 
     tmp = tmp[
@@ -204,10 +182,6 @@ def _trend_round_task(df: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame
 
 
 def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_col: str) -> pd.DataFrame:
-    """
-    FF1b/FF1c: Trendtabellen für IN_SCOPE + CORE_TASKS zusätzlich nach Faktor.
-    Minimal deskriptiv (keine Modellierung).
-    """
     tmp = df.copy()
 
     if factor_col not in tmp.columns:
@@ -266,14 +240,10 @@ def _trend_round_task_factor(df: pd.DataFrame, metric: str, min_n: int, factor_c
 
 
 def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataFrame:
-    """
-    Option A: Baseline-Kandidaten erst ab MIN_BASELINE_ROUND zulassen.
-    """
     n_col = f"{metric}_n"
     med_col = f"{metric}_median"
 
     min_base_rank = _round_rank(MIN_BASELINE_ROUND)
-
     baseline_map: Dict[str, Tuple[Optional[str], Optional[int], Optional[float]]] = {}
 
     for task, g in trend.groupby("task", sort=False):
@@ -329,9 +299,6 @@ def _index_trend_table(trend: pd.DataFrame, metric: str, min_n: int) -> pd.DataF
 
 
 def _accel_effect_table(trend_factor: pd.DataFrame, metric: str) -> pd.DataFrame:
-    """
-    FF1b (Accelerator): Effekt pro Round×Task als Vergleich accelerator_present=True vs False.
-    """
     med = f"{metric}_median"
     ncol = f"{metric}_n"
 
@@ -375,9 +342,6 @@ def _accel_effect_table(trend_factor: pd.DataFrame, metric: str) -> pd.DataFrame
 
 
 def _span_effect_table(trend_factor: pd.DataFrame, metric: str, factor_col: str) -> pd.DataFrame:
-    """
-    Spannweite pro Round×Task über Faktor-Ausprägungen (best/worst, delta, ratio).
-    """
     med = f"{metric}_median"
     ncol = f"{metric}_n"
 
@@ -422,9 +386,6 @@ def _span_effect_table(trend_factor: pd.DataFrame, metric: str, factor_col: str)
     return out
 
 
-# -----------------------------
-# FF1c helper: Software parsing
-# -----------------------------
 _SOFTWARE_TOKEN_SPLIT_RE = re.compile(r"(;|,|\s*\+\s*|\s*/\s*)")
 
 _SOFTWARE_FAMILY_RULES = [
@@ -442,11 +403,10 @@ _SOFTWARE_FAMILY_RULES = [
 
 
 def _split_software_values(val: object) -> list[str]:
-    """Zerlegt Mehrfachangaben in der Software-Spalte in einzelne Tokens (Reihenfolge bleibt erhalten)."""
     if val is None:
         return []
     try:
-        if pd.isna(val):  # type: ignore[arg-type]
+        if pd.isna(val):
             return []
     except Exception:
         pass
@@ -461,7 +421,7 @@ def _software_family(token: object) -> str:
     if token is None:
         return "UNKNOWN"
     try:
-        if pd.isna(token):  # type: ignore[arg-type]
+        if pd.isna(token):
             return "UNKNOWN"
     except Exception:
         pass
@@ -475,10 +435,10 @@ def _software_family(token: object) -> str:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/interim/mlperf_tiny_raw.parquet", help="Input parquet")
+    ap = argparse.ArgumentParser(description="EDA table generation for FF1 analyses.")
+    ap.add_argument("--data", default="data/interim/mlperf_tiny_raw.parquet", help="Input parquet path")
     ap.add_argument("--tables-dir", default="reports/tables", help="Output directory for tables")
-    ap.add_argument("--min-n", type=int, default=5, help="Minimum n for 'stable' statistics / baseline selection")
+    ap.add_argument("--min-n", type=int, default=5, help="Low-n threshold / baseline threshold")
     args = ap.parse_args()
 
     data_path = Path(args.data)
@@ -487,7 +447,6 @@ def main() -> None:
 
     df = pd.read_parquet(data_path)
 
-    # Optional: Features ergänzen, falls Parquet die neuen Spalten noch nicht enthält
     need_cols = {
         "scope_status", "task_canon", "model_mlc_canon",
         "accelerator_present", "processor_family",
@@ -500,21 +459,14 @@ def main() -> None:
         except Exception:
             pass
 
-    # Basis-Dataset für FF1c-Coverage: konsistent zur Trendbasis (latency vorhanden)
-    df_base = df[
-        (df.get("scope_status") == "IN_SCOPE")
-        & (df.get("task_canon").isin(CORE_TASKS))
-        & (df.get("latency_us").notna())
-    ].copy()
+    min_n = int(args.min_n)
 
-    # A) Coverage & Data quality
     cov_all = _coverage_round_task_all(df)
     _write_table(cov_all, tables_dir / "coverage_round_task_all.csv", "coverage_round_task_all")
 
     unk = _unknown_summary_by_round(df)
     _write_table(unk, tables_dir / "unknown_summary_by_round.csv", "unknown_summary_by_round")
 
-    # B) Metric coverage (Accuracy nur EINMAL)
     for metric in ["energy_uj", "power_mw", "auc"]:
         cov = _metric_coverage_by_round_task(df, metric=metric)
         _write_table(cov, tables_dir / f"coverage_{metric}_by_round_task.csv", f"coverage_{metric}_by_round_task")
@@ -522,12 +474,8 @@ def main() -> None:
     cov_acc = _metric_coverage_by_round_task(df, metric="accuracy")
     _write_table(cov_acc, tables_dir / "coverage_accuracy_by_round_task.csv", "coverage_accuracy_by_round_task")
 
-    # NEU: kompakte Tabelle "latency + energy coverage" pro Round×Task (IN_SCOPE + CORE_TASKS)
     cov_le = _coverage_latency_energy_by_round_task(df)
     _write_table(cov_le, tables_dir / "coverage_latency_energy_by_round_task.csv", "coverage_latency_energy_by_round_task")
-
-    # C) Trendtabellen + Index
-    min_n = int(args.min_n)
 
     for metric in ["latency_us", "energy_uj"]:
         if metric not in df.columns:
@@ -539,12 +487,10 @@ def main() -> None:
         trend_idx = _index_trend_table(trend, metric=metric, min_n=min_n)
         _write_table(trend_idx, tables_dir / f"trend_{metric}_round_task_indexed.csv", f"trend_{metric}_round_task_indexed")
 
-    # D) FF1b/FF1c Faktor-Tabellen + Effekt-Tabellen
     for metric in ["latency_us", "energy_uj"]:
         if metric not in df.columns:
             continue
 
-        # FF1b (Hardware)
         t_acc = _trend_round_task_factor(df, metric=metric, min_n=min_n, factor_col="accelerator_present")
         _write_table(
             t_acc,
@@ -581,19 +527,15 @@ def main() -> None:
             f"ff1b_span_{metric}_processor_family_round_task",
         )
 
-        # FF1c (Software – Option C: Multi-Label + Family Mapping)
-        # Interpretation: Eine Einreichung kann mehrere Software-Komponenten enthalten.
-        # Daher werden Software-Familien multi-label gezählt (assoziativ, keine disjunkte Partitionierung).
         sw_src_col = "software" if "software" in df.columns else ("software_stack" if "software_stack" in df.columns else None)
         if sw_src_col is None:
-            print("WARN: Keine Software-Spalte gefunden – FF1c Tabellen werden übersprungen.")
+            print("WARN: Software column missing; FF1c tables skipped")
         else:
             df_sw = df.copy()
 
             if sw_src_col == "software":
                 df_sw["_software_token"] = df_sw[sw_src_col].apply(_split_software_values)
             else:
-                # Fallback: bereits gebucktet; als Single-Label interpretieren
                 df_sw["_software_token"] = df_sw[sw_src_col].apply(lambda x: [] if pd.isna(x) else [str(x)])
 
             df_sw = df_sw.explode("_software_token")
