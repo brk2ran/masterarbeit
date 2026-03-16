@@ -1,302 +1,396 @@
 from __future__ import annotations
 
 import argparse
-import warnings
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Dict
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
+
 CORE_TASKS = ["AD", "IC", "KWS", "VWW"]
-CAT_COLS = ["accelerator_present", "processor_family", "cpu_freq_bucket"]
-SEED = 7
+ROUND_ORDER = ["v0.5", "v0.7", "v1.0", "v1.1", "v1.2", "v1.3"]
 
 
-def _hamming_distance_matrix(X: np.ndarray, centroids: np.ndarray) -> np.ndarray:
-    n = X.shape[0]
-    k = centroids.shape[0]
-    D = np.zeros((n, k), dtype=float)
-    for j in range(k):
-        D[:, j] = np.sum(X != centroids[j], axis=1)
-    return D
-
-
-def _update_centroids(X: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
-    n_cols = X.shape[1]
-    centroids = np.empty((k, n_cols), dtype=object)
-    for j in range(k):
-        mask = labels == j
-        if not mask.any():
-            centroids[j] = X[np.random.randint(0, len(X))]
-            continue
-        for c in range(n_cols):
-            vals, counts = np.unique(X[mask, c], return_counts=True)
-            centroids[j, c] = vals[np.argmax(counts)]
-    return centroids
-
-
-def kmodes_fit(
-    X_cat: np.ndarray,
-    k: int,
-    seed: int = SEED,
-    max_iter: int = 100,
-    n_init: int = 10,
-) -> Tuple[np.ndarray, float]:
-    rng = np.random.default_rng(seed)
-    best_labels = None
-    best_cost = np.inf
-
-    for _ in range(n_init):
-        idx = rng.choice(len(X_cat), size=k, replace=False)
-        centroids = X_cat[idx].copy()
-
-        labels = np.zeros(len(X_cat), dtype=int)
-        for _ in range(max_iter):
-            D = _hamming_distance_matrix(X_cat, centroids)
-            new_labels = np.argmin(D, axis=1)
-            if np.array_equal(new_labels, labels):
-                break
-            labels = new_labels
-            centroids = _update_centroids(X_cat, labels, k)
-
-        cost = float(np.sum(np.min(_hamming_distance_matrix(X_cat, centroids), axis=1)))
-        if cost < best_cost:
-            best_cost = cost
-            best_labels = labels.copy()
-
-    return best_labels, best_cost
-
-
-def _agreement_rate(labels_a: np.ndarray, labels_b: np.ndarray) -> float:
-    n = len(labels_a)
-    if n < 2:
-        return 1.0
-
-    same_a = labels_a[:, None] == labels_a[None, :]
-    same_b = labels_b[:, None] == labels_b[None, :]
-
-    triu = np.triu(np.ones((n, n), dtype=bool), k=1)
-    agree = np.sum((same_a == same_b) & triu)
-    total = np.sum(triu)
-    return float(agree / total) if total > 0 else 1.0
-
-
-def _adjusted_rand_index(labels_a: np.ndarray, labels_b: np.ndarray) -> float:
+def _round_rank(r: str) -> int:
     try:
-        from sklearn.metrics import adjusted_rand_score
-
-        return float(adjusted_rand_score(labels_a, labels_b))
-    except Exception:
-        return _agreement_rate(labels_a, labels_b)
+        return ROUND_ORDER.index(str(r))
+    except ValueError:
+        return 10_000
 
 
-def _mode(series: pd.Series) -> object:
-    s = series.dropna()
-    if s.empty:
-        return "UNKNOWN"
-    vc = s.astype(str).value_counts()
-    return vc.index[0] if not vc.empty else "UNKNOWN"
+def _ensure_dirs(*paths: Path) -> None:
+    for p in paths:
+        p.mkdir(parents=True, exist_ok=True)
 
 
-def _pick_system_id(df: pd.DataFrame) -> pd.Series:
-    if "public_id" in df.columns:
-        return df["public_id"].astype(str)
-
-    parts = []
-    for c in ["round", "system_name", "platform", "vendor", "processor_family", "host_processor_frequency"]:
-        if c in df.columns:
-            parts.append(df[c].astype(str).fillna("NA"))
-
-    if not parts:
-        return df.index.astype(str)
-
-    key = parts[0]
-    for p in parts[1:]:
-        key = key + "||" + p
-    return key
+def _save(fig, out_path: Path, also_svg: bool) -> None:
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    print(f"[figure] {out_path}")
+    if also_svg:
+        out_svg = out_path.with_suffix(".svg")
+        fig.savefig(out_svg, bbox_inches="tight")
+        print(f"[figure] {out_svg}")
 
 
-def _build_system_table(df: pd.DataFrame) -> pd.DataFrame:
-    d = df.copy()
-    d["system_id"] = _pick_system_id(d)
-
-    d["accelerator_present"] = d.get("accelerator_present", pd.Series("UNKNOWN", index=d.index))
-    d["accelerator_present"] = (
-        d["accelerator_present"]
-        .map({True: "True", False: "False"})
-        .fillna(d["accelerator_present"].astype(str).replace({"nan": "UNKNOWN"}))
+def _prep_trend(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["round_rank"] = df["round"].map(_round_rank)
+    df["task_rank"] = df["task"].map({t: i for i, t in enumerate(CORE_TASKS)})
+    df = (
+        df.sort_values(["round_rank", "task_rank"])
+        .drop(columns=["round_rank", "task_rank"])
+        .reset_index(drop=True)
     )
-    d["processor_family"] = (
-        d.get("processor_family", pd.Series("UNKNOWN", index=d.index))
-        .astype(str)
-        .replace({"nan": "UNKNOWN"})
-    )
-    d["cpu_freq_bucket"] = (
-        d.get("cpu_freq_bucket", pd.Series("UNKNOWN", index=d.index))
-        .astype(str)
-        .replace({"nan": "UNKNOWN"})
-    )
-
-    agg = (
-        d.groupby("system_id", dropna=False)
-        .agg(
-            accelerator_present=("accelerator_present", _mode),
-            processor_family=("processor_family", _mode),
-            cpu_freq_bucket=("cpu_freq_bucket", _mode),
-            systems_rows=("system_id", "size"),
-        )
-        .reset_index()
-    )
-    return agg
+    return df
 
 
-def _load_parquet_systems(parquet_path: Path) -> pd.DataFrame:
-    df = pd.read_parquet(parquet_path)
-
-    if "scope_status" in df.columns:
-        df = df[df["scope_status"] == "IN_SCOPE"].copy()
-
-    if "task_canon" in df.columns:
-        df = df[df["task_canon"].isin(CORE_TASKS)].copy()
-    elif "task" in df.columns:
-        df = df[df["task"].isin(CORE_TASKS)].copy()
-
-    return _build_system_table(df)
-
-
-def run_robustness_check(
-    parquet_path: Path,
-    assignments_path: Optional[Path],
-    out_dir: Path,
-    k: Optional[int] = None,
-    seed: int = SEED,
+def _plot_trend_raw(
+    df: pd.DataFrame,
+    metric: str,
+    figures_dir: Path,
+    min_n: int,
+    logy: bool,
+    also_svg: bool,
 ) -> None:
-    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    df = _prep_trend(df)
 
-    sys_df = _load_parquet_systems(parquet_path)
-    print(f"Systems total: {len(sys_df)}")
+    y_med = f"{metric}_median"
+    y_q25 = f"{metric}_q25"
+    y_q75 = f"{metric}_q75"
+    low_col = f"{metric}_low_n"
 
-    kmeans_labels: Optional[np.ndarray] = None
-    if assignments_path and assignments_path.exists():
-        asgn = pd.read_csv(assignments_path)
-        if "system_id" in asgn.columns and "cluster_id" in asgn.columns:
-            asgn_sys = asgn.drop_duplicates("system_id")[["system_id", "cluster_id"]]
-            sys_df = sys_df.merge(
-                asgn_sys.rename(columns={"cluster_id": "cluster_kmeans"}),
-                on="system_id",
-                how="left",
-            )
-            kmeans_labels = sys_df["cluster_kmeans"].fillna(-1).to_numpy(dtype=int)
-            print(
-                f"K-Means labels loaded: {len(asgn_sys)} systems, "
-                f"{sys_df['cluster_kmeans'].nunique()} clusters"
-            )
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    X_cat = sys_df[CAT_COLS].fillna("UNKNOWN").to_numpy(dtype=object)
+    for task in CORE_TASKS:
+        sub = df[df["task"] == task].copy()
+        if sub.empty:
+            continue
 
-    if k is None:
-        if kmeans_labels is not None:
-            k = int(pd.Series(kmeans_labels[kmeans_labels >= 0]).nunique())
-            print(f"k inferred from K-Means labels: {k}")
+        x = sub["round"].to_list()
+        y = sub[y_med].to_numpy(dtype=float)
+        q25 = sub[y_q25].to_numpy(dtype=float)
+        q75 = sub[y_q75].to_numpy(dtype=float)
+
+        line = ax.plot(x, y, marker="o", linewidth=2, label=task)[0]
+        color = line.get_color()
+        ax.fill_between(x, q25, q75, alpha=0.15, color=color)
+
+        if low_col in sub.columns:
+            low = sub[low_col].fillna(False).to_numpy(dtype=bool)
+            if low.any():
+                ax.scatter(
+                    np.array(x)[low],
+                    y[low],
+                    s=90,
+                    facecolors="none",
+                    edgecolors="black",
+                    linewidths=1.5,
+                    zorder=5,
+                )
+
+    ax.set_title(f"Trend: {metric} (Median) pro Round × Task (Low-n n<{min_n} markiert)")
+    ax.set_xlabel("Round")
+    ax.set_ylabel(metric)
+    ax.grid(True, which="both", linestyle="--", alpha=0.5)
+
+    if logy:
+        ax.set_yscale("log")
+
+    ax.legend(title="Task", loc="best")
+    out_path = figures_dir / f"trend_{metric}.png"
+    _save(fig, out_path, also_svg)
+    plt.close(fig)
+
+
+def _plot_trend_index(
+    df: pd.DataFrame,
+    metric: str,
+    figures_dir: Path,
+    min_n: int,
+    also_svg: bool,
+) -> None:
+    
+    df = _prep_trend(df)
+
+    y_med = f"{metric}_median_index"
+    y_q25 = f"{metric}_q25_index"
+    y_q75 = f"{metric}_q75_index"
+    low_col = f"{metric}_low_n"
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for task in CORE_TASKS:
+        sub = df[df["task"] == task].copy()
+        if sub.empty:
+            continue
+
+        x = sub["round"].to_list()
+        y = sub[y_med].to_numpy(dtype=float)
+        q25 = sub[y_q25].to_numpy(dtype=float)
+        q75 = sub[y_q75].to_numpy(dtype=float)
+
+        line = ax.plot(x, y, marker="o", linewidth=2, label=task)[0]
+        color = line.get_color()
+        ax.fill_between(x, q25, q75, alpha=0.15, color=color)
+
+        if low_col in sub.columns:
+            low = sub[low_col].fillna(False).to_numpy(dtype=bool)
+            mask = low & ~np.isnan(y)
+            if mask.any():
+                ax.scatter(
+                    np.array(x)[mask],
+                    y[mask],
+                    s=90,
+                    facecolors="none",
+                    edgecolors="black",
+                    linewidths=1.5,
+                    zorder=5,
+                )
+
+    ax.axhline(1.0, linestyle="--", linewidth=1.5, alpha=0.7)
+    ax.set_title(f"Trend (Index): {metric} pro Round × Task (Low-n n<{min_n} markiert)")
+    ax.set_xlabel("Round")
+    ax.set_ylabel(f"{metric}_median_index (baseline=1.0)")
+    ax.grid(True, which="both", linestyle="--", alpha=0.5)
+
+    ax.legend(title="Task", loc="best")
+    out_path = figures_dir / f"trend_{metric}_index.png"
+    _save(fig, out_path, also_svg)
+    plt.close(fig)
+
+
+def _plot_unknown_share(unknown_df: pd.DataFrame, figures_dir: Path, also_svg: bool) -> None:
+    df = unknown_df.copy()
+    df["round_rank"] = df["round"].map(_round_rank)
+    df = df.sort_values("round_rank").drop(columns=["round_rank"])
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(df["round"], df["share_unknown"])
+    ax.set_title("Datenqualität: Anteil UNKNOWN (task/model nicht zuordenbar)")
+    ax.set_xlabel("Round")
+    ax.set_ylabel("share_unknown")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+
+    out_path = figures_dir / "unknown_share_by_round.png"
+    _save(fig, out_path, also_svg)
+    plt.close(fig)
+
+
+def _read_csv_safe(tables_dir: Path, name: str) -> Optional[pd.DataFrame]:
+    p = tables_dir / name
+    if not p.exists():
+        print(f"WARN: Tabelle fehlt: {p} (übersprungen)")
+        return None
+    return pd.read_csv(p)
+
+
+def _cluster_label_map(profiles: Optional[pd.DataFrame]) -> Dict[int, str]:
+    
+    if profiles is None or profiles.empty or "cluster_id" not in profiles.columns:
+        return {}
+
+    m: Dict[int, str] = {}
+    for _, r in profiles.iterrows():
+        cid = int(r["cluster_id"])
+        cclass = str(r.get("cluster_class", f"C{cid}"))
+
+        acc = str(r.get("accelerator_present", "UNK"))
+        fam = str(r.get("processor_family", "UNK"))
+        fb = str(r.get("cpu_freq_bucket", "UNK"))
+
+        if acc == "True":
+            short = f"{cclass}: Accel / {fam}"
+        elif acc == "False":
+            short = f"{cclass}: No-Accel / {fam}"
         else:
-            k = 6
-            print(f"k fallback: {k}")
+            short = f"{cclass}: {fam}"
 
-    print(f"Running K-Modes with k={k}, seed={seed} ...")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        kmodes_labels, cost = kmodes_fit(X_cat, k=k, seed=seed)
+        if fb not in ("UNKNOWN", "nan", "NaN"):
+            short = f"{short} ({fb})"
 
-    sys_df["cluster_kmodes"] = kmodes_labels
-    print(f"K-Modes completed. Total cost: {cost:.1f}")
+        m[cid] = short
 
-    if kmeans_labels is not None:
-        valid = kmeans_labels >= 0
-        ari = _adjusted_rand_index(kmeans_labels[valid], kmodes_labels[valid])
-        rand = _agreement_rate(kmeans_labels[valid], kmodes_labels[valid])
-        n_valid = int(valid.sum())
+    return m
 
-        print("\nAgreement analysis")
-        print(f"Systems with K-Means label: {n_valid}")
-        print(f"Adjusted Rand Index: {ari:.4f}")
-        print(f"Pairwise Rand Index: {rand:.4f}")
+def _plot_ff2_pareto_scatter_4panel(
+    pareto_points: pd.DataFrame,
+    figures_dir: Path,
+    also_svg: bool,
+    profiles: Optional[pd.DataFrame] = None,
+) -> None:
+    
+    df = pareto_points.copy()
 
-        comp = sys_df[
-            [
-                "system_id",
-                "accelerator_present",
-                "processor_family",
-                "cpu_freq_bucket",
-                "cluster_kmeans",
-                "cluster_kmodes",
-            ]
-        ].copy()
-        comp["labels_agree"] = comp["cluster_kmeans"] == comp["cluster_kmodes"]
-        comp_path = out_dir / "ff2_kmodes_comparison.csv"
-        comp.to_csv(comp_path, index=False)
-        print(f"[table] ff2_kmodes_comparison: {len(comp)} rows -> {comp_path}")
+    required = {"task", "latency_us", "energy_uj", "cluster_id", "pareto_flag"}
+    missing = required - set(df.columns)
+    if missing:
+        print(f"WARN: ff2_pareto_points missing columns {sorted(list(missing))} -> skip FF2 pareto plot")
+        return
 
-        summary = pd.DataFrame(
-            [
-                {
-                    "k": k,
-                    "n_systems": n_valid,
-                    "adjusted_rand_index": round(ari, 4),
-                    "pairwise_rand_index": round(rand, 4),
-                    "kmodes_total_cost": round(cost, 1),
-                }
-            ]
+    df = df[df["latency_us"].notna() & df["energy_uj"].notna()].copy()
+    if df.empty:
+        print("WARN: Keine Zeilen mit latency_us & energy_uj vorhanden -> FF2 Pareto-Plot übersprungen")
+        return
+
+    df["cluster_id"] = df["cluster_id"].astype(int)
+    df["pareto_flag"] = df["pareto_flag"].fillna(0).astype(int)
+    df["task"] = df["task"].astype(str)
+
+    cmap = _cluster_label_map(profiles)
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, sharey=True)
+    axes = axes.flatten()
+
+    cluster_ids = sorted(df["cluster_id"].unique().tolist())
+
+    for i, task in enumerate(CORE_TASKS):
+
+        ax = axes[i]
+        sub = df[df["task"] == task].copy()
+
+        ax.set_title(task)
+
+        if sub.empty:
+            ax.text(0.5, 0.5, "No data", transform=ax.transAxes, ha="center", va="center")
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            ax.grid(True, which="both", linestyle="--", alpha=0.4)
+            continue
+
+        for cid in cluster_ids:
+
+            s2 = sub[sub["cluster_id"] == cid]
+
+            if s2.empty:
+                continue
+
+            label = cmap.get(cid, f"Cluster {cid}")
+
+            ax.scatter(
+                s2["latency_us"].to_numpy(dtype=float),
+                s2["energy_uj"].to_numpy(dtype=float),
+                s=18,
+                alpha=0.75,
+                label=label,
+            )
+
+            s_p = s2[s2["pareto_flag"] == 1]
+
+            if not s_p.empty:
+
+                ax.scatter(
+                    s_p["latency_us"].to_numpy(dtype=float),
+                    s_p["energy_uj"].to_numpy(dtype=float),
+                    s=70,
+                    marker="X",
+                    facecolors="none",
+                    edgecolors="black",
+                    linewidths=1.3,
+                    zorder=5,
+                )
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+
+    fig.suptitle(
+        "FF2: Pareto-Trade-off (Latency vs Energy) – 4 Tasks (Farbe=Cluster, Pareto umrandet)",
+        y=0.98,
+    )
+
+    fig.text(0.5, 0.04, "latency_us (µs / inference, log)", ha="center")
+    fig.text(0.04, 0.5, "energy_uj (µJ / inference, log)", va="center", rotation="vertical")
+
+    all_h, all_l = [], []
+
+    for ax in axes:
+        h, l = ax.get_legend_handles_labels()
+        all_h.extend(h)
+        all_l.extend(l)
+
+    if all_h:
+
+        uniq = {}
+
+        for h, l in zip(all_h, all_l):
+            if l not in uniq:
+                uniq[l] = h
+
+        def _cluster_order(label: str) -> int:
+            try:
+                return int(label.split(":")[0].replace("C", ""))
+            except Exception:
+                return 999
+
+        labels_sorted = sorted(uniq.keys(), key=_cluster_order)
+        handles_sorted = [uniq[l] for l in labels_sorted]
+
+        fig.legend(
+            handles_sorted,
+            labels_sorted,
+            loc="center right",
+            bbox_to_anchor=(1.18, 0.5),
+            title="Cluster",
         )
-        summ_path = out_dir / "ff2_kmodes_summary.csv"
-        summary.to_csv(summ_path, index=False)
-        print(f"[table] ff2_kmodes_summary: 1 row -> {summ_path}")
 
-    else:
-        print("No K-Means labels available. Writing K-Modes output only.")
-        sys_df.to_csv(out_dir / "ff2_kmodes_only.csv", index=False)
+    plt.tight_layout(rect=[0.06, 0.06, 0.86, 0.94])
 
+    out_path = figures_dir / "ff2_pareto_scatter_latency_vs_energy_by_task.png"
 
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="K-Modes robustness check for FF2 clustering")
-    p.add_argument(
-        "--parquet",
-        type=str,
-        default="data/interim/mlperf_tiny_raw.parquet",
-        help="Path to consolidated parquet file",
-    )
-    p.add_argument(
-        "--assignments",
-        type=str,
-        default="reports/tables/ff2_cluster_assignments.csv",
-        help="Path to ff2_cluster_assignments.csv",
-    )
-    p.add_argument(
-        "--out-dir",
-        type=str,
-        default="reports/tables",
-        help="Output directory for comparison tables",
-    )
-    p.add_argument(
-        "--k",
-        type=int,
-        default=None,
-        help="Number of clusters; inferred from K-Means assignments if omitted",
-    )
-    p.add_argument("--seed", type=int, default=SEED)
-    return p.parse_args()
+    _save(fig, out_path, also_svg)
 
+    plt.close(fig)
 
 def main() -> None:
-    a = _parse_args()
-    run_robustness_check(
-        parquet_path=Path(a.parquet),
-        assignments_path=Path(a.assignments) if a.assignments else None,
-        out_dir=Path(a.out_dir),
-        k=a.k,
-        seed=a.seed,
-    )
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tables-dir", default="reports/tables")
+    ap.add_argument("--figures-dir", default="reports/figures")
+    ap.add_argument("--min-n", type=int, default=5)
+    args = ap.parse_args()
+
+    tables_dir = Path(args.tables_dir)
+    figures_dir = Path(args.figures_dir)
+    _ensure_dirs(figures_dir)
+
+    min_n = int(args.min_n)
+
+    also_svg = True
+    logy = True
+
+    # FF1 raw trends
+    lat = _read_csv_safe(tables_dir, "trend_latency_us_round_task.csv")
+    en = _read_csv_safe(tables_dir, "trend_energy_uj_round_task.csv")
+    if lat is not None:
+        _plot_trend_raw(lat, "latency_us", figures_dir, min_n=min_n, logy=logy, also_svg=also_svg)
+    if en is not None:
+        _plot_trend_raw(en, "energy_uj", figures_dir, min_n=min_n, logy=logy, also_svg=also_svg)
+
+    # FF1 index trends
+    lat_i = _read_csv_safe(tables_dir, "trend_latency_us_round_task_indexed.csv")
+    en_i = _read_csv_safe(tables_dir, "trend_energy_uj_round_task_indexed.csv")
+    if lat_i is not None:
+        _plot_trend_index(lat_i, "latency_us", figures_dir, min_n=min_n, also_svg=also_svg)
+    if en_i is not None:
+        _plot_trend_index(en_i, "energy_uj", figures_dir, min_n=min_n, also_svg=also_svg)
+
+    # UNKNOWN share
+    unk = _read_csv_safe(tables_dir, "unknown_summary_by_round.csv")
+    if unk is not None:
+        _plot_unknown_share(unk, figures_dir, also_svg=also_svg)
+
+    # FF2 pareto scatter
+    pareto_pts = _read_csv_safe(tables_dir, "ff2_pareto_points_round_task.csv")
+    prof = _read_csv_safe(tables_dir, "ff2_cluster_profiles.csv")
+    if pareto_pts is not None:
+        _plot_ff2_pareto_scatter_4panel(
+            pareto_pts,
+            figures_dir,
+            also_svg=also_svg,
+            profiles=prof,
+        )
 
 
 if __name__ == "__main__":
