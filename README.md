@@ -159,6 +159,14 @@ Abhängigkeiten installieren
 
 # Ausführung der Pipeline
 
+## Abgabe-Quickstart
+
+Dieses Repository stellt den finalen Abgabestand der Analysepipeline dar.
+Ausführungsreihenfolge: `python -m src.data_preprocessing` → `python -m src.eda` → `python -m src.clustering` → `python -m src.clustering_kmodes_robustness` → `python -m src.plots` → `python -m src.checks`.
+Die finalen, in der Arbeit referenzierten Artefakte befinden sich in `reports/tables/` und `reports/figures/`.
+Der exakte Abgabestand ist über den finalen Git-Tag bzw. Release eindeutig identifizierbar.
+
+
 1.  Datenaufbereitung
 
 ```{=html}
