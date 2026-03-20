@@ -1,14 +1,14 @@
 {
-  "ff2_pareto_scatter_latency_vs_energy_by_task.png": "fb39ab656e5c04d38436ecdb6af3a581b7783069eb424fb0e3d4bc6595e822a8",
-  "ff2_pareto_scatter_latency_vs_energy_by_task.svg": "be704220862c2f7130379ac2bdeecf4737db77f5c17c121400ce09eca28deebc",
-  "trend_energy_uj.png": "d11652aba1c1950629338544945fbb48ddf8146215cec9a51b1db2675b4c9cca",
-  "trend_energy_uj.svg": "8dba0a0b0aaa6043893ac1fd83ad29f060e4694c83b225e838190dc983551653",
-  "trend_energy_uj_index.png": "ce38e867b1bdf9011177a456897067ba477832724373447c8bd90cbca6803841",
-  "trend_energy_uj_index.svg": "bef267b3d7a9feb2c5f959fa9ea7b27cd2f9329bb4e7416b69cb818c35e09e78",
-  "trend_latency_us.png": "15b5776c9165be84174dc8a7912d56a94d62173e95e0e71ef7bb5ac6780badd4",
-  "trend_latency_us.svg": "7d213e4d0523b570791b772428cf3cad2ae68c98c5307d48664d184ef0f90152",
-  "trend_latency_us_index.png": "4fe56ab73010b531cbf4851dc39059dc45c3361c45d64f17f4694a4333102b66",
-  "trend_latency_us_index.svg": "16697814e16183d61ea6ba319d15fa48e77a8dcfb116f80378c9efb1bb5776c1",
+  "ff2_pareto_scatter_latency_vs_energy_by_task.png": "89a9892545fe68f09bfe29c9815d4781ac9abcbe01c382ba50cd788071f3f283",
+  "ff2_pareto_scatter_latency_vs_energy_by_task.svg": "136c07d97a3b4f2d9f1b83f7cfb36a340d4ce2649a8f4194b3a4dd02738a13c8",
+  "trend_energy_uj.png": "49a3982deda5cda34f693a34fb87c66ab86d0ce8d84fc6233f16d1a49d0d4dc9",
+  "trend_energy_uj.svg": "6d95c791bd5aef592795a6b25a67c54fc4b555b32a7cfecd599785e75bd01599",
+  "trend_energy_uj_index.png": "cf0ee717abb0b26d48b28e4640d9835875ea38a644e15a31b4aaf36c731c4f31",
+  "trend_energy_uj_index.svg": "93c42361358a2c77d87d1f19705303637d625b1d8504d509be1689e93a49dd9f",
+  "trend_latency_us.png": "9c42885e7f8bf542a2be35c5ee20005c62011eaff6ac5f8aacf3f76d783a3a22",
+  "trend_latency_us.svg": "9ed54c84f4c55a0ea697ec7fa1d7e821a303c1606a0fd8cfdbb477f567032be8",
+  "trend_latency_us_index.png": "47db186b2ede35aa252e84d774473c275690c38a5a837f1c8d484a97d645f807",
+  "trend_latency_us_index.svg": "db401736c895634d4dfefa7b90513a3afeb83d247b12cfd4d28beefd5cddeabb",
   "unknown_share_by_round.png": "a7e88bcf531541e1b3780e98008ad504f912ad5d051d730acdebebe62235f4b2",
-  "unknown_share_by_round.svg": "3a4c55fb7d3dece55fa583e40fd4e0832275ce2a51e9b215932d4043a46ec4a4"
+  "unknown_share_by_round.svg": "fbe3eec23c1c6f37604160b6f8f8dae1892583fee3fe09b07da66a416cdc1abc"
 }
