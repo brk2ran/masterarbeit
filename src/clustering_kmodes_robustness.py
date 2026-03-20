@@ -23,13 +23,14 @@ def _hamming_distance_matrix(X: np.ndarray, centroids: np.ndarray) -> np.ndarray
     return D
 
 
-def _update_centroids(X: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
+
+def _update_centroids(X: np.ndarray, labels: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
     n_cols = X.shape[1]
     centroids = np.empty((k, n_cols), dtype=object)
     for j in range(k):
         mask = labels == j
         if not mask.any():
-            centroids[j] = X[np.random.randint(0, len(X))]
+            centroids[j] = X[rng.integers(0, len(X))]
             continue
         for c in range(n_cols):
             vals, counts = np.unique(X[mask, c], return_counts=True)
@@ -59,7 +60,7 @@ def kmodes_fit(
             if np.array_equal(new_labels, labels):
                 break
             labels = new_labels
-            centroids = _update_centroids(X_cat, labels, k)
+            centroids = _update_centroids(X_cat, labels, k, rng)
 
         cost = float(np.sum(np.min(_hamming_distance_matrix(X_cat, centroids), axis=1)))
         if cost < best_cost:

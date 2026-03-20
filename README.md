@@ -273,28 +273,28 @@ Der exakte Abgabestand ist über den finalen Git-Tag bzw. Release eindeutig iden
     python -m src.eda
 ```
 
-3.  Abbildungen erzeugen
-
-```text
-    python -m src.plots
-```
-
-4.  Clusteranalyse
+3.  Clusteranalyse
 
 ```text
     python -m src.clustering
 ```
 
-5.  Robustheitsanalyse
+4.  Robustheitsanalyse
 
 ```text
     python -m src.clustering_kmodes_robustness
 ```
 
+5.  Abbildungen erzeugen
+
+```text
+    python -m src.plots
+```
+
 6.  Validierungschecks
 
 ```text
-    python -m src.checks
+    python -m src.checks --strict-baseline-diff
 ```
 
 Generierte Artefakte befinden sich in:
